@@ -2877,19 +2877,10 @@ _ROAD_STYLES = {
 }
 
 
-def road_map_figure(basemap_rgb, depth_ft, segments, ext, height_px=None):
-    """Interactive road map (zoom in/out and pan) as a Plotly figure.
-
-    The basemap and the flood-depth shading are composited into ONE raster
-    placed under the axes in lon/lat; the roads are drawn on top as vector
-    lines, so they stay sharp at any zoom. It uses plain Plotly axes (SVG),
-    not a WebGL map, so any number of these can sit on one page (browsers cap
-    WebGL maps at about 16), and the basemap is still fetched server-side.
-    Drag a box to zoom into a section, double-click to reset; the toolbar has
-    zoom in/out, pan and a PNG download.
-    """
+def compose_flood_jpeg(basemap_rgb, depth_ft, quality=88):
+    """Basemap + flood-depth shading (no roads) -> JPEG bytes. The raster
+    layer of the interactive road map; JPEG keeps it far smaller than PNG."""
     import io as _io
-    import base64 as _b64
     from PIL import Image
     base = Image.fromarray(np.asarray(basemap_rgb, dtype=np.uint8), "RGB").convert("RGBA")
     W, H = base.size
@@ -2897,8 +2888,22 @@ def road_map_figure(basemap_rgb, depth_ft, segments, ext, height_px=None):
                               "RGBA").resize((W, H), Image.NEAREST)
     comp = Image.alpha_composite(base, overlay).convert("RGB")
     buf = _io.BytesIO()
-    comp.save(buf, format="JPEG", quality=88)      # far smaller than PNG for a map
-    src = "data:image/jpeg;base64," + _b64.b64encode(buf.getvalue()).decode("ascii")
+    comp.save(buf, format="JPEG", quality=quality)
+    return buf.getvalue()
+
+
+def road_map_figure(raster_jpeg, segments, ext, height_px=None, width_hint_px=1100):
+    """Interactive road map (zoom in/out and pan) as a Plotly figure.
+
+    `raster_jpeg` is the basemap + flood-depth shading from
+    compose_flood_jpeg, placed under the axes in lon/lat; the roads are drawn
+    on top as vector lines, so they stay sharp at any zoom. It uses plain
+    Plotly axes (SVG), not a WebGL map, and the basemap is still fetched
+    server-side. Drag a box to zoom into a section, double-click to reset;
+    the toolbar has zoom in/out, pan and a PNG download.
+    """
+    import base64 as _b64
+    src = "data:image/jpeg;base64," + _b64.b64encode(raster_jpeg).decode("ascii")
 
     lon_min, lat_min, lon_max, lat_max = ext
     fig = go.Figure()
@@ -2924,7 +2929,7 @@ def road_map_figure(basemap_rgb, depth_ft, segments, ext, height_px=None):
     coslat = max(0.05, math.cos(math.radians(latc)))
     if height_px is None:
         aspect = (lat_max - lat_min) / max((lon_max - lon_min) * coslat, 1e-9)
-        height_px = int(min(760, max(340, 560 * aspect)))
+        height_px = int(min(900, max(420, width_hint_px * aspect)))
     fig.update_xaxes(range=[lon_min, lon_max], visible=False, constrain="domain")
     fig.update_yaxes(range=[lat_min, lat_max], visible=False, scaleanchor="x",
                      scaleratio=1.0 / coslat, constrain="domain")
@@ -2940,6 +2945,7 @@ def road_map_plotly_config(filename="road_map"):
     scrolls), zoom in/out + pan + reset in the toolbar, high-res PNG export."""
     return {
         "scrollZoom": False,
+        "doubleClick": "reset",          # double-click always returns to the full map
         "displaylogo": False,
         "modeBarButtonsToRemove": ["select2d", "lasso2d", "autoScale2d"],
         "toImageButtonOptions": {"format": "png", "scale": 3, "filename": filename},
@@ -2963,6 +2969,7 @@ fdem = SimpleNamespace(
     classify_roads_access=classify_roads_access,
     detect_main_entrance=detect_main_entrance,
     compose_road_png=compose_road_png,
+    compose_flood_jpeg=compose_flood_jpeg,
     road_map_figure=road_map_figure,
     road_map_plotly_config=road_map_plotly_config,
     legend_html=legend_html,
@@ -5752,17 +5759,18 @@ def main():
                          "point shown below the maps isn't the right road, pin it by pasting the entrance "
                          "coordinate here in the same 'lat, lon' order shown there (e.g. 37.5554, -76.8361).",
                 )
-            _rinteractive = st.checkbox(
-                "Interactive maps (zoom in/out and pan)", value=True, key="rd_interactive",
-                help="On: drag a box over any part of a map to zoom into it, double-click to zoom back "
-                     "out; the toolbar on each map also has zoom in/out, pan, reset and a high-resolution "
-                     "PNG download. Off: maps render as static images, as before.",
-            )
             st.caption(
-                "A road map is produced for every ticked level × horizon × scenario. "
-                + ("Drag a box on a map to zoom into that section; double-click to reset. "
-                   if _rinteractive else "Maps render as static images. ")
-                + "Roads come live from OpenStreetMap (Overpass) for the map area."
+                "A road map is produced for every ticked level × horizon × scenario. The grid shows them "
+                "as static images; pick any map in “Zoom into a map” to zoom in and out of a "
+                "section of it. Roads come live from OpenStreetMap (Overpass) for the map area."
+            )
+
+            # Settings fingerprint, so maps kept from an earlier Generate can be
+            # flagged when the controls above have changed since.
+            _rsig = (
+                selected_location, tuple(_rrows), tuple(int(y) for y in _ryears_sel),
+                tuple(_rscn_sel), float(_rzoom), _rres_label, _rbase_label,
+                bool(_raccess_on), bool(_rentry_on), (_rentry_manual or "").strip(),
             )
 
             if not _rrows:
@@ -5809,24 +5817,6 @@ def main():
                             )
 
                 if _Zm is not None and _ext is not None and _roads is not None:
-                    st.markdown(
-                        '<div style="margin:0.5rem 0 0.8rem;padding:0.55rem 0.8rem;background:#f8fafc;'
-                        'border:1px solid #e2e8f0;border-radius:8px;font-size:1.05rem;">'
-                        '<b style="font-size:1.2rem;">Roads</b>&nbsp;&nbsp;'
-                        '<span style="color:#dc1414;font-weight:800;">━</span> flooded (surface below the water level)'
-                        '&nbsp;&nbsp;&nbsp;<span style="color:#8a2be2;font-weight:800;">━</span> '
-                        'inaccessible (dry but cut off from the network by flooding)'
-                        '&nbsp;&nbsp;&nbsp;<span style="color:#228b22;font-weight:800;">━</span> dry (accessible)'
-                        '<br><b style="font-size:1.05rem;">Water</b>&nbsp;&nbsp;'
-                        '<span style="background:rgb(198,219,239);">&nbsp;&nbsp;</span>'
-                        '<span style="background:rgb(107,174,214);">&nbsp;&nbsp;</span>'
-                        '<span style="background:rgb(33,113,181);">&nbsp;&nbsp;</span>'
-                        '<span style="background:rgb(8,69,148);">&nbsp;&nbsp;</span>'
-                        '&nbsp; flood depth - light → dark blue = shallow → deep'
-                        '</div>',
-                        unsafe_allow_html=True,
-                    )
-                    st.caption(f"{len(_roads)} OpenStreetMap road way(s) in view.")
                     if _base_img is None:
                         _base_img = np.full((max(2, _Zm.shape[0]), max(2, _Zm.shape[1]), 3), 245, dtype=np.uint8)
 
@@ -5835,6 +5825,7 @@ def main():
                     # make the whole area read as inaccessible.
                     _entry = None
                     _entry_manual = False
+                    _entry_note = None
                     if _rentry_on:
                         _mtxt = (_rentry_manual or "").strip()
                         if _mtxt:
@@ -5867,23 +5858,21 @@ def main():
                         if _entry:
                             _elon, _elat = _entry[0]
                             _how = "pinned manually" if _entry_manual else "auto-detected from the building cluster"
-                            st.caption(
+                            _entry_note = (
                                 f"Main entrance treated as a guaranteed gateway near "
                                 f"**{_elat:.5f}, {_elon:.5f}** ({_how}). "
                                 f"It still shows flooded, but no longer cuts the area off. If this isn't the right "
                                 f"road, set the override above or untick the option."
                             )
                         else:
-                            st.caption(
+                            _entry_note = (
                                 "Main-entrance exemption is on, but no single entrance could be auto-detected "
                                 "from the network here, so it has no effect. You can pin one with the override above."
                             )
 
+                    _rmaps = []
                     with st.spinner("Classifying roads and building maps…"):
                         for _scn in _rscn_sel:
-                            st.markdown(f"##### {_rscn_pretty(_scn)}")
-                            _cols = st.columns(2)
-                            _k = 0
                             for _lbl, _blv in _rrows:
                                 for _yr in _ryears_sel:
                                     _wl = _blv + _rslr(_scn, _yr)
@@ -5902,7 +5891,6 @@ def main():
                                         _cnt['pct_dry'] = _cnt.get('pct_dry', 0.0) + _cnt.get('pct_inacc', 0.0)
                                         _cnt['pct_inacc'] = 0.0
                                     _depth = fdem.bathtub_depth_ft(_Zm, _wl, mask_water=True)
-                                    _tgt = _cols[_k % 2]
                                     if _raccess_on:
                                         _metric_line = (
                                             f"flooded {_cnt['pct_flood']:.0f}% · "
@@ -5912,46 +5900,123 @@ def main():
                                         _metric_line = (
                                             f"flooded {_cnt['pct_flood']:.0f}% · "
                                             f"dry {_cnt['pct_dry']:.0f}%")
-                                    _tgt.markdown(
-                                        f"**{_lbl} - {int(_yr)}**<br>"
-                                        f"<span style='font-size:0.95rem;color:#374151'>"
-                                        f"WL ≈ {_wl:.2f} ft NAVD88 &nbsp;•&nbsp; "
-                                        f"{_metric_line}</span>",
-                                        unsafe_allow_html=True,
-                                    )
-                                    if _rinteractive:
-                                        _rfig = fdem.road_map_figure(_base_img, _depth, _segs, _ext)
-                                        _rname = (f"roads_{selected_location}_{_lbl}_{int(_yr)}_{_scn}"
-                                                  .replace(" ", "_").replace("%", "pct"))
-                                        _tgt.plotly_chart(
-                                            _rfig, use_container_width=True,
-                                            config=fdem.road_map_plotly_config(_rname),
-                                            key=f"rd_fig_{_scn}_{_lbl}_{int(_yr)}",
-                                        )
-                                    else:
-                                        _png = fdem.compose_road_png(_base_img, _depth, _segs, _ext)
-                                        _tgt.image(_png, use_container_width=True)
-                                    _k += 1
+                                    _rmaps.append(dict(
+                                        scn=_scn, lbl=_lbl, yr=int(_yr), wl=float(_wl),
+                                        metric=_metric_line, segs=_segs,
+                                        png=fdem.compose_road_png(_base_img, _depth, _segs, _ext),
+                                        jpg=fdem.compose_flood_jpeg(_base_img, _depth),
+                                    ))
 
-                    if _raccess_on:
-                        st.caption(
-                            "Road segments: red = flooded (sampled surface below the water level), "
-                            "violet = dry but inaccessible (every dry route to the largest connected network is "
-                            "severed by flooding), green = dry and reachable. Percentages are by segment count. "
-                            "Accessibility is computed on the OpenStreetMap network graph (intersections recovered "
-                            "from shared road vertices); roads that were already disconnected in the raw data are "
-                            "not counted as flood-caused. Road "
-                            f"elevations and flood shading from USGS 3DEP (~10 m), displayed at ~{_rres_m:.0f} m; "
-                            "roads from OpenStreetMap. Open water (Z ≤ 0) is excluded from the flood mask."
+                    # Keep the maps in the session so they survive reruns (picking a
+                    # map to zoom, or any other control, no longer wipes them).
+                    st.session_state['rd_results'] = dict(
+                        sig=_rsig, location=selected_location, maps=_rmaps, ext=_ext,
+                        n_roads=len(_roads), entry_note=_entry_note,
+                        access_on=bool(_raccess_on), res_m=float(_rres_m),
+                    )
+
+            # ---- Show the last generated maps (kept across reruns) ----
+            _rres = st.session_state.get('rd_results')
+            if _rres and _rres.get('location') == selected_location and _rres.get('maps'):
+                if _rres.get('sig') != _rsig:
+                    st.info("These maps were made with different settings than the ones above. "
+                            "Click **Generate road maps** to update them.")
+                st.markdown(
+                    '<div style="margin:0.5rem 0 0.8rem;padding:0.55rem 0.8rem;background:#f8fafc;'
+                    'border:1px solid #e2e8f0;border-radius:8px;font-size:1.05rem;">'
+                    '<b style="font-size:1.2rem;">Roads</b>&nbsp;&nbsp;'
+                    '<span style="color:#dc1414;font-weight:800;">━</span> flooded (surface below the water level)'
+                    '&nbsp;&nbsp;&nbsp;<span style="color:#8a2be2;font-weight:800;">━</span> '
+                    'inaccessible (dry but cut off from the network by flooding)'
+                    '&nbsp;&nbsp;&nbsp;<span style="color:#228b22;font-weight:800;">━</span> dry (accessible)'
+                    '<br><b style="font-size:1.05rem;">Water</b>&nbsp;&nbsp;'
+                    '<span style="background:rgb(198,219,239);">&nbsp;&nbsp;</span>'
+                    '<span style="background:rgb(107,174,214);">&nbsp;&nbsp;</span>'
+                    '<span style="background:rgb(33,113,181);">&nbsp;&nbsp;</span>'
+                    '<span style="background:rgb(8,69,148);">&nbsp;&nbsp;</span>'
+                    '&nbsp; flood depth - light → dark blue = shallow → deep'
+                    '</div>',
+                    unsafe_allow_html=True,
+                )
+                st.caption(f"{_rres['n_roads']} OpenStreetMap road way(s) in view.")
+                if _rres.get('entry_note'):
+                    st.caption(_rres['entry_note'])
+
+                _rmaps = _rres['maps']
+
+                # ---- Zoom into a map: one interactive, full-width view ----
+                # Only ONE map is interactive at a time: each carries its raster
+                # (~0.5 MB), and sending dozens at once over the app's connection
+                # can drop it, which reruns the page.
+                st.markdown("##### 🔍 Zoom into a map")
+                _rpick = st.selectbox(
+                    "Map to explore", options=list(range(len(_rmaps))),
+                    format_func=lambda i: (f"{_rmaps[i]['lbl']} - {_rmaps[i]['yr']} - "
+                                           f"{_rscn_pretty(_rmaps[i]['scn'])}"),
+                    key="rd_zoom_pick",
+                )
+                if _rpick is None or _rpick >= len(_rmaps):
+                    _rpick = 0
+                _rm = _rmaps[_rpick]
+                st.markdown(
+                    f"**{_rm['lbl']} - {_rm['yr']} - {_rscn_pretty(_rm['scn'])}**<br>"
+                    f"<span style='font-size:0.95rem;color:#374151'>"
+                    f"WL ≈ {_rm['wl']:.2f} ft NAVD88 &nbsp;•&nbsp; {_rm['metric']}</span>",
+                    unsafe_allow_html=True,
+                )
+                _rname = (f"roads_{selected_location}_{_rm['lbl']}_{_rm['yr']}_{_rm['scn']}"
+                          .replace(" ", "_").replace("%", "pct"))
+                st.plotly_chart(
+                    fdem.road_map_figure(_rm['jpg'], _rm['segs'], _rres['ext']),
+                    use_container_width=True,
+                    config=fdem.road_map_plotly_config(_rname),
+                    key="rd_zoom_fig",
+                )
+                st.caption(
+                    "Drag a box over any part of the map to zoom into it; double-click to zoom back out. "
+                    "The toolbar (top right of the map) also has zoom in/out, pan, reset and a "
+                    "high-resolution PNG download of the current view."
+                )
+
+                # ---- All maps (static grid) ----
+                st.markdown("##### All maps")
+                for _scn in dict.fromkeys(m['scn'] for m in _rmaps):
+                    st.markdown(f"###### {_rscn_pretty(_scn)}")
+                    _cols = st.columns(2)
+                    _k = 0
+                    for _m in _rmaps:
+                        if _m['scn'] != _scn:
+                            continue
+                        _tgt = _cols[_k % 2]
+                        _tgt.markdown(
+                            f"**{_m['lbl']} - {_m['yr']}**<br>"
+                            f"<span style='font-size:0.95rem;color:#374151'>"
+                            f"WL ≈ {_m['wl']:.2f} ft NAVD88 &nbsp;•&nbsp; "
+                            f"{_m['metric']}</span>",
+                            unsafe_allow_html=True,
                         )
-                    else:
-                        st.caption(
-                            "Road segments: red = flooded (sampled surface below the water level), "
-                            "green = dry. Reachability analysis is off, so roads are colored by flooding only "
-                            "(no 'inaccessible' category). Percentages are by segment count. Road "
-                            f"elevations and flood shading from USGS 3DEP (~10 m), displayed at ~{_rres_m:.0f} m; "
-                            "roads from OpenStreetMap. Open water (Z ≤ 0) is excluded from the flood mask."
-                        )
+                        _tgt.image(_m['png'], use_container_width=True)
+                        _k += 1
+
+                if _rres.get('access_on'):
+                    st.caption(
+                        "Road segments: red = flooded (sampled surface below the water level), "
+                        "violet = dry but inaccessible (every dry route to the largest connected network is "
+                        "severed by flooding), green = dry and reachable. Percentages are by segment count. "
+                        "Accessibility is computed on the OpenStreetMap network graph (intersections recovered "
+                        "from shared road vertices); roads that were already disconnected in the raw data are "
+                        "not counted as flood-caused. Road "
+                        f"elevations and flood shading from USGS 3DEP (~10 m), displayed at ~{_rres['res_m']:.0f} m; "
+                        "roads from OpenStreetMap. Open water (Z ≤ 0) is excluded from the flood mask."
+                    )
+                else:
+                    st.caption(
+                        "Road segments: red = flooded (sampled surface below the water level), "
+                        "green = dry. Reachability analysis is off, so roads are colored by flooding only "
+                        "(no 'inaccessible' category). Percentages are by segment count. Road "
+                        f"elevations and flood shading from USGS 3DEP (~10 m), displayed at ~{_rres['res_m']:.0f} m; "
+                        "roads from OpenStreetMap. Open water (Z ≤ 0) is excluded from the flood mask."
+                    )
 
     # ========================================================================
     # TAB: BUILDING DEPTH - flood depth at one building vs ground / FFE / NAVD88
