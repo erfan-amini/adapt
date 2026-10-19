@@ -2868,6 +2868,84 @@ def compose_road_png(basemap_rgb, depth_ft, segments, ext):
     return buf.getvalue()
 
 
+# Road segment styles shared by the interactive road map: status -> (label,
+# color, line width in screen px). Same colors as compose_road_png.
+_ROAD_STYLES = {
+    0: ("Dry (reachable)", "rgb(34,139,34)", 2.2),
+    1: ("Dry but inaccessible", "rgb(138,43,226)", 3.0),
+    2: ("Flooded", "rgb(220,20,20)", 3.6),
+}
+
+
+def road_map_figure(basemap_rgb, depth_ft, segments, ext, height_px=None):
+    """Interactive road map (zoom in/out and pan) as a Plotly figure.
+
+    The basemap and the flood-depth shading are composited into ONE raster
+    placed under the axes in lon/lat; the roads are drawn on top as vector
+    lines, so they stay sharp at any zoom. It uses plain Plotly axes (SVG),
+    not a WebGL map, so any number of these can sit on one page (browsers cap
+    WebGL maps at about 16), and the basemap is still fetched server-side.
+    Drag a box to zoom into a section, double-click to reset; the toolbar has
+    zoom in/out, pan and a PNG download.
+    """
+    import io as _io
+    import base64 as _b64
+    from PIL import Image
+    base = Image.fromarray(np.asarray(basemap_rgb, dtype=np.uint8), "RGB").convert("RGBA")
+    W, H = base.size
+    overlay = Image.fromarray(depth_to_rgba(depth_ft, alpha=150, colors=WS_COLORS_BLUE),
+                              "RGBA").resize((W, H), Image.NEAREST)
+    comp = Image.alpha_composite(base, overlay).convert("RGB")
+    buf = _io.BytesIO()
+    comp.save(buf, format="JPEG", quality=88)      # far smaller than PNG for a map
+    src = "data:image/jpeg;base64," + _b64.b64encode(buf.getvalue()).decode("ascii")
+
+    lon_min, lat_min, lon_max, lat_max = ext
+    fig = go.Figure()
+    for status in (0, 1, 2):                       # dry, then inaccessible, then flooded on top
+        xs, ys = [], []
+        for p0, p1, s in segments:
+            if s == status:
+                xs.extend((p0[0], p1[0], None))
+                ys.extend((p0[1], p1[1], None))
+        if xs:
+            name, col, w = _ROAD_STYLES[status]
+            fig.add_trace(go.Scatter(
+                x=xs, y=ys, mode="lines", line=dict(color=col, width=w),
+                name=name, hoverinfo="name", showlegend=False))
+    fig.add_layout_image(dict(
+        source=src, xref="x", yref="y", x=lon_min, y=lat_max,
+        sizex=lon_max - lon_min, sizey=lat_max - lat_min,
+        sizing="stretch", layer="below"))
+
+    # Keep ground distances true: one degree of latitude spans 1/cos(lat)
+    # times the pixels of one degree of longitude.
+    latc = 0.5 * (lat_min + lat_max)
+    coslat = max(0.05, math.cos(math.radians(latc)))
+    if height_px is None:
+        aspect = (lat_max - lat_min) / max((lon_max - lon_min) * coslat, 1e-9)
+        height_px = int(min(760, max(340, 560 * aspect)))
+    fig.update_xaxes(range=[lon_min, lon_max], visible=False, constrain="domain")
+    fig.update_yaxes(range=[lat_min, lat_max], visible=False, scaleanchor="x",
+                     scaleratio=1.0 / coslat, constrain="domain")
+    fig.update_layout(
+        height=height_px, margin=dict(l=0, r=0, t=0, b=0), dragmode="zoom",
+        plot_bgcolor="white", paper_bgcolor="white", hovermode="closest",
+    )
+    return fig
+
+
+def road_map_plotly_config(filename="road_map"):
+    """Plotly config for road_map_figure: no wheel zoom (so the page still
+    scrolls), zoom in/out + pan + reset in the toolbar, high-res PNG export."""
+    return {
+        "scrollZoom": False,
+        "displaylogo": False,
+        "modeBarButtonsToRemove": ["select2d", "lasso2d", "autoScale2d"],
+        "toImageButtonOptions": {"format": "png", "scale": 3, "filename": filename},
+    }
+
+
 # Namespace so the Flood Maps tab can keep calling fdem.<fn>(...).
 fdem = SimpleNamespace(
     dem_tiles_for_bbox=dem_tiles_for_bbox,
@@ -2885,6 +2963,8 @@ fdem = SimpleNamespace(
     classify_roads_access=classify_roads_access,
     detect_main_entrance=detect_main_entrance,
     compose_road_png=compose_road_png,
+    road_map_figure=road_map_figure,
+    road_map_plotly_config=road_map_plotly_config,
     legend_html=legend_html,
 )
 
@@ -5672,9 +5752,17 @@ def main():
                          "point shown below the maps isn't the right road, pin it by pasting the entrance "
                          "coordinate here in the same 'lat, lon' order shown there (e.g. 37.5554, -76.8361).",
                 )
+            _rinteractive = st.checkbox(
+                "Interactive maps (zoom in/out and pan)", value=True, key="rd_interactive",
+                help="On: drag a box over any part of a map to zoom into it, double-click to zoom back "
+                     "out; the toolbar on each map also has zoom in/out, pan, reset and a high-resolution "
+                     "PNG download. Off: maps render as static images, as before.",
+            )
             st.caption(
-                "A road map is produced for every ticked level × horizon × scenario. Maps render as static "
-                "images. Roads come live from OpenStreetMap (Overpass) for the map area."
+                "A road map is produced for every ticked level × horizon × scenario. "
+                + ("Drag a box on a map to zoom into that section; double-click to reset. "
+                   if _rinteractive else "Maps render as static images. ")
+                + "Roads come live from OpenStreetMap (Overpass) for the map area."
             )
 
             if not _rrows:
@@ -5831,8 +5919,18 @@ def main():
                                         f"{_metric_line}</span>",
                                         unsafe_allow_html=True,
                                     )
-                                    _png = fdem.compose_road_png(_base_img, _depth, _segs, _ext)
-                                    _tgt.image(_png, use_container_width=True)
+                                    if _rinteractive:
+                                        _rfig = fdem.road_map_figure(_base_img, _depth, _segs, _ext)
+                                        _rname = (f"roads_{selected_location}_{_lbl}_{int(_yr)}_{_scn}"
+                                                  .replace(" ", "_").replace("%", "pct"))
+                                        _tgt.plotly_chart(
+                                            _rfig, use_container_width=True,
+                                            config=fdem.road_map_plotly_config(_rname),
+                                            key=f"rd_fig_{_scn}_{_lbl}_{int(_yr)}",
+                                        )
+                                    else:
+                                        _png = fdem.compose_road_png(_base_img, _depth, _segs, _ext)
+                                        _tgt.image(_png, use_container_width=True)
                                     _k += 1
 
                     if _raccess_on:
