@@ -200,6 +200,76 @@ ADAPTATION_COST_SOURCE = (
     "adaptation-measure table (measure name and cost columns only)."
 )
 
+# ----------------------------------------------------------------------------
+# Per-building retrofit flags written by the MATLAB pipeline
+# (AAA___Main_v14.m) into {LOCATION}_bldg_lookup.csv:
+#   ElevationEligible - False when the first floor is already within the
+#       location's elevation threshold of the DFE. Elevate then returns the
+#       no-action damage, so the per-building views hide it, the same way
+#       they hide it for above-DFE buildings.
+#   OneStoryAddStory  - True when the building's "WFP 1st" result is the
+#       one-story add-a-story conversion: a new story is built on top and
+#       the living space moves up one story (STORY_H_FT = 10 ft in MATLAB).
+#       It is labelled "Add a story" in the per-building views. Other
+#       one-story buildings have no upper floor, so WFP 1st is hidden there.
+# Both flags only change what the per-building views show. No rows are
+# dropped from the damage table, so community totals are unaffected.
+# Bundles without these columns behave exactly as before.
+# ----------------------------------------------------------------------------
+ADD_STORY_LABEL = 'Add a story'
+ADD_STORY_HEIGHT_FT = 10.0          # = STORY_H_FT in AAA___Main_v14.m
+# No sourced cost for building a new story yet; the WFP 1st range above
+# does not cover it. Replace this text once a source is chosen.
+ADD_STORY_COST_TEXT = 'Not yet estimated'
+
+
+def _flag_true(v):
+    """Read a 0/1 or true/false flag from a bundle CSV cell. Missing -> False."""
+    if v is None:
+        return False
+    try:
+        if pd.isna(v):
+            return False
+    except (TypeError, ValueError):
+        pass
+    if isinstance(v, str):
+        return v.strip().lower() in ('1', '1.0', 'true', 'yes')
+    try:
+        return bool(float(v))
+    except (TypeError, ValueError):
+        return False
+
+
+def _elev_eligible_flag(v):
+    """ElevationEligible cell -> bool. Missing -> True, the same defensive
+    fallback the MATLAB writer uses, so older bundles keep Elevate."""
+    if v is None:
+        return True
+    try:
+        if pd.isna(v):
+            return True
+    except (TypeError, ValueError):
+        pass
+    return _flag_true(v)
+
+
+def _is_one_story_bldg(soid, n_stories):
+    """Same rule as is_one_story_fn in AAA___Main_v14.m: for RES1 SOIDs
+    (R1 + story digit + basement flag) the story digit decides, R11x being
+    one-story; any other class uses number_of_stories <= 1 (rounded).
+    A missing story count counts as one-story, as the map hover always did."""
+    s = '' if soid is None else str(soid).strip()
+    if s.lower() == 'nan':
+        s = ''
+    if len(s) >= 3 and s.startswith('R1'):
+        return s[2] == '1'
+    try:
+        if n_stories is None or pd.isna(n_stories):
+            return True
+        return float(n_stories) < 1.5
+    except (TypeError, ValueError):
+        return True
+
 
 def parse_filename(filename):
     """Parse filename to extract location."""
@@ -2837,6 +2907,44 @@ def _cached_osm_roads(bbox):
     return fdem.fetch_osm_roads(bbox)
 
 
+def _backfill_dropped_actions(df):
+    """Community totals: count every building under every strategy.
+
+    load_bundle's applicability filter removes (building, action) rows for
+    retrofits that do not apply to a building (WFP Basement without a
+    basement, Elevate above the DFE, RES2 retrofits). That is right for the
+    per-building views, but a community total built from the remaining rows
+    leaves those buildings' damage out of the strategy total while it stays
+    in the No-mitigation total, so baseline minus strategy shows their whole
+    damage as a fake benefit. Here, for every strategy still offered
+    somewhere in `df`, each building with no row for it is added back at its
+    No-mitigation damage (the retrofit does nothing for it). A strategy
+    dropped for every building (e.g. WFP Basement in a location with almost
+    no basements) is not added back, so it still vanishes. Use this only on
+    the copy that feeds community totals, never on the per-building frame.
+    """
+    if df is None or df.empty or 'Action' not in df.columns:
+        return df
+    key = [c for c in ('id', 'TargetYear', 'SLR') if c in df.columns]
+    base = df[df['Action'] == 'No mitigation']
+    if base.empty or 'id' not in key:
+        return df
+    pieces = [df]
+    for action in df['Action'].unique():
+        if action == 'No mitigation':
+            continue
+        have = df.loc[df['Action'] == action, key].drop_duplicates()
+        missing = base.merge(have, on=key, how='left', indicator=True)
+        missing = missing[missing['_merge'] == 'left_only'].drop(columns='_merge')
+        if not missing.empty:
+            missing = missing.copy()
+            missing['Action'] = action
+            pieces.append(missing[df.columns])
+    if len(pieces) == 1:
+        return df
+    return pd.concat(pieces, ignore_index=True)
+
+
 @st.cache_data(show_spinner=False)
 def load_bundle(data_folder, location_slug, file_sig=None):
     """Load a single-location CSV bundle and return the data_store entry.
@@ -2972,6 +3080,11 @@ def load_bundle(data_folder, location_slug, file_sig=None):
     # action) cells, and the hover loop below skips NaN cells so
     # they don't render as a misleading $0.
     #
+    # Community totals are the exception: they are built from a copy where
+    # each dropped (building, action) row is added back at the building's
+    # No-mitigation damage (_backfill_dropped_actions), so a retrofit's
+    # community benefit is never inflated by the buildings it skips.
+    #
     # Vectorized so this stays cheap on multi-thousand-building inventories.
     if 'foundation_type' in df_buildings.columns:
         _foundation_norm = (
@@ -3070,15 +3183,21 @@ def load_bundle(data_folder, location_slug, file_sig=None):
     pct_cols_in_bldg = [c for c in df_buildings.columns
                         if c.startswith('CumEAD_P')]
 
+    # Buildings a retrofit does not apply to count at their No-mitigation
+    # damage in that retrofit's community total (see
+    # _backfill_dropped_actions). Without this, the totals left their damage
+    # out and reported it as benefit.
+    df_for_totals = _backfill_dropped_actions(df_buildings)
+
     agg_by_occ = {}
     for occ, ids_filter in occ_id_map.items():
         if ids_filter is None:
-            df_o = df_buildings
+            df_o = df_for_totals
         else:
             if not ids_filter:
                 agg_by_occ[occ] = pd.DataFrame()
                 continue
-            df_o = df_buildings[df_buildings['id'].astype(int).isin(ids_filter)]
+            df_o = df_for_totals[df_for_totals['id'].astype(int).isin(ids_filter)]
 
         if df_o.empty or not pct_cols_in_bldg:
             agg_by_occ[occ] = pd.DataFrame()
@@ -3420,10 +3539,14 @@ def aggregate_filtered_data(df_buildings, target_year, scenario):
         (df_buildings['TargetYear'] == target_year) &
         (df_buildings['SLR'] == scenario)
     ].copy()
-    
+
     if df_filtered.empty:
         return None
-    
+
+    # Count buildings a retrofit does not apply to at their No-mitigation
+    # damage, so the strategy totals stay comparable with the baseline.
+    df_filtered = _backfill_dropped_actions(df_filtered)
+
     agg_data = []
     for action in df_filtered['Action'].unique():
         df_action = df_filtered[df_filtered['Action'] == action]
@@ -6837,8 +6960,17 @@ def main():
                         # single-story building it would mean floodproofing the
                         # whole living space, so we hide that line from the hover -
                         # mirroring the building-detail cards. NaN stories => hide.
-                        _row_nstory = row.get('number_of_stories')
-                        _row_one_story = pd.isna(_row_nstory) or float(_row_nstory) <= 1
+                        # Exception (MATLAB v14): a one-story home flagged
+                        # OneStoryAddStory is scored as an add-a-story conversion,
+                        # so its line stays and reads "Add a story". One-story is
+                        # decided with the MATLAB rule (SOID story digit for RES1).
+                        _row_add_story = _flag_true(row.get('OneStoryAddStory'))
+                        _row_one_story = (not _row_add_story) and _is_one_story_bldg(
+                            row.get('SOID'), row.get('number_of_stories'))
+                        # Elevation not advised for this building (first floor
+                        # within the location's threshold of the DFE): the
+                        # Elevate value equals no action, so hide the line.
+                        _row_elev_ok = _elev_eligible_flag(row.get('ElevationEligible'))
 
                         for col in action_cols_p50:
                             action_name = col.replace('_P50', '')
@@ -6854,6 +6986,8 @@ def main():
                             # Single-story buildings: wet-floodproofing the first
                             # floor is not an applicable strategy - hide the line.
                             if action_name == 'WFP 1st' and _row_one_story:
+                                continue
+                            if action_name == 'Elevate' and not _row_elev_ok:
                                 continue
 
                             # Skip retrofits that don't physically apply to this
@@ -6876,8 +7010,9 @@ def main():
                             if action_name == 'WFP B':
                                 display_name = 'WFP Basement'
                             elif action_name == 'WFP 1st':
-                                display_name = 'WFP 1st Floor'
-                            
+                                display_name = (ADD_STORY_LABEL if _row_add_story
+                                                else 'WFP 1st Floor')
+
                             if action_name == 'No mitigation':
                                 text += f"<b>No Mitigation</b>: {format_currency(val)}<br>"
                             else:
@@ -8910,7 +9045,24 @@ def main():
                 
                 building_dfe_status = building_info.get('DFE_Status', 'Unknown')
                 is_above_dfe = building_dfe_status == 'Above DFE'
-                
+
+                # MATLAB v14 per-building flags (see ADD_STORY_LABEL notes).
+                # Elevate is hidden when the building is above the DFE OR
+                # elevation is not advised for it (ElevationEligible = 0).
+                _elev_ok_b = _elev_eligible_flag(building_info.get('ElevationEligible'))
+                hide_elevate_b = is_above_dfe or not _elev_ok_b
+                # WFP 1st: relabelled "Add a story" for one-story homes the
+                # model scored as an add-a-story conversion; hidden for any
+                # other one-story building (only when the bundle carries the
+                # OneStoryAddStory column, so older bundles are unchanged).
+                _add_story_b = _flag_true(building_info.get('OneStoryAddStory'))
+                _hide_wfp1_b = (
+                    'OneStoryAddStory' in building_info.index
+                    and not _add_story_b
+                    and _is_one_story_bldg(building_info.get('SOID'),
+                                           building_info.get('number_of_stories'))
+                )
+
                 # Header line: lead with the address when we have one (NSI
                 # ships them for ~75% of buildings); fall back to the bare
                 # ID otherwise. Either way, the ID stays visible.
@@ -9213,6 +9365,17 @@ def main():
                     # no longer gated on story count, so the residential example
                     # always shows a "wet floodproof the first floor" box when
                     # the building has WFP 1st data.
+                    # MATLAB v14: for a one-story home scored as add-a-story
+                    # the box becomes "add a story"; for any other one-story
+                    # building it is hidden. Elevate is hidden when elevation
+                    # is not advised (ElevationEligible = 0).
+                    if _akey == 'Elevate' and not _elev_ok_b:
+                        continue
+                    if _akey == 'WFP 1st' and _hide_wfp1_b:
+                        continue
+                    _is_add_story_card = (_akey == 'WFP 1st' and _add_story_b)
+                    if _is_add_story_card:
+                        _atitle = 'add a story and move the living space up'
 
                     _elev_bits = []
                     if pd.notna(_gnd):
@@ -9221,6 +9384,10 @@ def main():
                         if _show_raise and _dfe is not None:
                             _elev_bits.append(
                                 f"First floor: <b>raised from {float(_ffe_c):.1f} ft to {_dfe:.1f} ft</b>")
+                        elif _is_add_story_card:
+                            _elev_bits.append(
+                                f"Living floor: <b>moved up from {float(_ffe_c):.1f} ft to "
+                                f"{float(_ffe_c) + ADD_STORY_HEIGHT_FT:.1f} ft</b>")
                         else:
                             _elev_bits.append(f"First floor: <b>{float(_ffe_c):.1f} ft</b>")
                     if _dfe is not None:
@@ -9406,10 +9573,12 @@ def main():
                 
                 # Both scenarios for the selected target year
                 df_building_year = df_building[df_building['TargetYear'] == target_year].copy()
-                
-                if is_above_dfe:
+
+                if hide_elevate_b:
                     df_building_year = df_building_year[df_building_year['Action'] != 'Elevate']
-                
+                if _hide_wfp1_b:
+                    df_building_year = df_building_year[df_building_year['Action'] != 'WFP 1st']
+
                 if not df_building_year.empty:
                     # Consistent ordering: baseline first, then strategies from least → most invasive
                     bd_action_order = ['No mitigation', 'Raise Utilities', 'WFP B', 'Elevate', 'WFP 1st']
@@ -9420,6 +9589,10 @@ def main():
                         'WFP 1st':         'WFP 1st Floor',
                         'Elevate':         'Elevate',
                     }
+                    if _add_story_b:
+                        bd_action_labels['WFP 1st'] = ADD_STORY_LABEL
+                    if _hide_wfp1_b:
+                        bd_action_order = [a for a in bd_action_order if a != 'WFP 1st']
                     # For RES2 (manufactured housing) and RES4 (small mixed-use /
                     # temporary lodging) buildings, basement wet-floodproofing
                     # and 1st-floor wet-floodproofing aren't viable retrofits -
@@ -9583,7 +9756,7 @@ def main():
                         Returns list[dict] with Remaining damage (Med/Min/Max),
                         Benefit (Med/Min/Max), and Reduction %."""
                         df_y = df_building[df_building['TargetYear'] == year].copy()
-                        if is_above_dfe:
+                        if hide_elevate_b:
                             df_y = df_y[df_y['Action'] != 'Elevate']
                         if df_y.empty:
                             return []
@@ -9631,8 +9804,10 @@ def main():
                             
                             rows.append({
                                 'Strategy':                             bd_action_labels[action],
-                                'Cost estimate':                        (ADAPTATION_COST_ESTIMATES.get(action, "-")
-                                                                         if action != 'No mitigation' else "-"),
+                                'Cost estimate':                        ("-" if action == 'No mitigation'
+                                                                         else ADD_STORY_COST_TEXT
+                                                                         if (action == 'WFP 1st' and _add_story_b)
+                                                                         else ADAPTATION_COST_ESTIMATES.get(action, "-")),
                                 'Remaining damage - 5th pctile':        _fmt_v(dmg_lo),
                                 'Remaining damage - Median':            _fmt_v(dmg_med),
                                 'Remaining damage - 95th pctile':       _fmt_v(dmg_hi),
@@ -9671,6 +9846,18 @@ def main():
                         st.info(
                             "ℹ️ The **Elevate Structure** option is not shown for this building because its first-floor "
                             "elevation already meets or exceeds the Design Flood Elevation (BFE + 2 ft)."
+                        )
+                    elif not _elev_ok_b:
+                        st.info(
+                            "ℹ️ The **Elevate Structure** option is not shown for this building because its first floor "
+                            "is already close to the Design Flood Elevation (BFE + 2 ft); the model only advises "
+                            "elevation when the gap is larger than the threshold set for this location."
+                        )
+                    if _add_story_b:
+                        st.info(
+                            "ℹ️ This is a one-story home, so **Add a story** replaces wet floodproofing the first floor: "
+                            "a new story is built on top, the living space moves up one story, and the ground floor "
+                            "is left to flood. Its cost is not yet estimated."
                         )
                     
                     # ---- Cross-year comparison table (selected SLR only) ----
