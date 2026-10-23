@@ -2334,23 +2334,75 @@ def compose_flood_png(basemap_rgb, depth_ft):
     return buf.getvalue()
 
 
-def fetch_osm_roads(bbox, timeout=60):
-    """Query the Overpass API for 'highway' ways in bbox (server-side).
-    Returns a list of dicts: {'coords' Nx2 (lon,lat), 'name', 'ref', 'highway'}.
-    Mirrors download_osm_roads_pamunkey.py but runs live for the map ROI."""
-    import urllib.request
-    import urllib.parse
-    import json as _json
+# Public Overpass servers, tried in order. The main one often refuses or
+# rate-limits shared cloud hosts (e.g. Streamlit Community Cloud), so the app
+# falls back to the mirrors.
+OVERPASS_ENDPOINTS = (
+    "https://overpass-api.de/api/interpreter",
+    "https://overpass.kumi.systems/api/interpreter",
+    "https://overpass.private.coffee/api/interpreter",
+    "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
+)
+
+
+def _force_ipv4_requests():
+    """Make requests/urllib3 resolve hosts to IPv4 only. Hosted containers
+    often have no IPv6 route, which shows up as '[Errno 99] Cannot assign
+    requested address' when a server also publishes an IPv6 address."""
+    try:
+        import urllib3.util.connection as _uc
+        _uc.HAS_IPV6 = False
+    except Exception:                                      # noqa: BLE001
+        pass
+
+
+def fetch_osm_roads_raw(bbox, timeout=60, endpoints=OVERPASS_ENDPOINTS):
+    """Overpass JSON for the 'highway' ways in bbox. Tries each server in
+    turn, then repeats over IPv4 only if any attempt failed to connect.
+    Raises RuntimeError listing every server's failure if all fail."""
+    import requests
     lon_min, lat_min, lon_max, lat_max = bbox
     query = (f"[out:json][timeout:{timeout}];"
              f'way["highway"]({lat_min},{lon_min},{lat_max},{lon_max});'
              f"out body geom;")
-    data = urllib.parse.urlencode({"data": query}).encode("utf-8")
-    req = urllib.request.Request(
-        "https://overpass-api.de/api/interpreter", data=data,
-        headers={"User-Agent": "ADAPT-FloodTool/1.0 (Columbia CCSR research app)"})
-    with urllib.request.urlopen(req, timeout=timeout + 30) as resp:
-        raw = _json.loads(resp.read().decode("utf-8"))
+    headers = {"User-Agent": "ADAPT-FloodTool/1.0 (Columbia CCSR research app)"}
+    errors = []
+    retry_ipv4 = False
+    for attempt in (0, 1):
+        if attempt == 1:
+            if not retry_ipv4:
+                break
+            _force_ipv4_requests()
+        for url in endpoints:
+            host = url.split("/")[2]
+            try:
+                resp = requests.post(url, data={"data": query}, headers=headers,
+                                     timeout=(10, timeout + 15))
+            except requests.exceptions.ConnectionError as exc:
+                retry_ipv4 = True
+                errors.append(f"{host}: {exc}")
+                continue
+            except Exception as exc:                       # noqa: BLE001
+                errors.append(f"{host}: {exc}")
+                continue
+            if resp.status_code != 200:
+                errors.append(f"{host}: HTTP {resp.status_code}")
+                continue
+            try:
+                raw = resp.json()
+            except ValueError:
+                errors.append(f"{host}: reply was not JSON")
+                continue
+            # A busy server can answer 200 with a 'remark' and no data.
+            if not raw.get("elements") and raw.get("remark"):
+                errors.append(f"{host}: {str(raw.get('remark'))[:120]}")
+                continue
+            return raw
+    raise RuntimeError("No Overpass server answered. " + " | ".join(errors[-len(endpoints):]))
+
+
+def osm_roads_from_raw(raw):
+    """Overpass JSON -> list of {'coords' Nx2 (lon,lat), 'name', 'ref', 'highway'}."""
     roads = []
     for el in raw.get("elements", []):
         if el.get("type") != "way" or "geometry" not in el:
@@ -2366,6 +2418,56 @@ def fetch_osm_roads(bbox, timeout=60):
             "highway": tags.get("highway", "unknown"),
         })
     return roads
+
+
+def fetch_osm_roads(bbox, timeout=60):
+    """Query Overpass for 'highway' ways in bbox (server-side).
+    Returns a list of dicts: {'coords' Nx2 (lon,lat), 'name', 'ref', 'highway'}.
+    Mirrors download_osm_roads_pamunkey.py but runs live for the map ROI."""
+    return osm_roads_from_raw(fetch_osm_roads_raw(bbox, timeout=timeout))
+
+
+def _way_touches_bbox(coords, bbox):
+    """True if a polyline (Nx2 lon/lat) has a vertex inside bbox or a segment
+    crossing it, i.e. the ways an Overpass bbox query returns."""
+    lon_min, lat_min, lon_max, lat_max = bbox
+    x, y = coords[:, 0], coords[:, 1]
+    if x.max() < lon_min or x.min() > lon_max or y.max() < lat_min or y.min() > lat_max:
+        return False
+    if np.any((x >= lon_min) & (x <= lon_max) & (y >= lat_min) & (y <= lat_max)):
+        return True
+    # Liang-Barsky clip of every segment against the box.
+    x0, y0, dx, dy = x[:-1], y[:-1], np.diff(x), np.diff(y)
+    t0 = np.zeros_like(x0)
+    t1 = np.ones_like(x0)
+    ok = np.ones_like(x0, dtype=bool)
+    for p, q in ((-dx, x0 - lon_min), (dx, lon_max - x0), (-dy, y0 - lat_min), (dy, lat_max - y0)):
+        par = p == 0
+        ok &= ~(par & (q < 0))
+        with np.errstate(divide="ignore", invalid="ignore"):
+            r = np.where(par, 0.0, q / np.where(par, 1.0, p))
+        t0 = np.where(~par & (p < 0), np.maximum(t0, r), t0)
+        t1 = np.where(~par & (p > 0), np.minimum(t1, r), t1)
+    return bool(np.any(ok & (t0 <= t1)))
+
+
+def load_local_osm_roads(path, bbox):
+    """Roads from a saved Overpass file ({slug}_osm_roads.json, made by
+    download_osm_roads.py), limited to the ways that touch bbox, the same set
+    an Overpass query for bbox returns. Returns None if the file is missing,
+    unreadable, or does not cover the whole bbox."""
+    import json as _json
+    try:
+        with open(path, "r", encoding="utf-8") as fh:
+            saved = _json.load(fh)
+        fb = saved["bbox"]
+    except Exception:                                      # noqa: BLE001
+        return None
+    lon_min, lat_min, lon_max, lat_max = bbox
+    if not (fb[0] <= lon_min and fb[1] <= lat_min and fb[2] >= lon_max and fb[3] >= lat_max):
+        return None
+    return [r for r in osm_roads_from_raw(saved.get("overpass", {}))
+            if _way_touches_bbox(r["coords"], bbox)]
 
 
 def sample_dem_bilinear(Zm, ext, lons, lats):
@@ -2964,6 +3066,8 @@ fdem = SimpleNamespace(
     fetch_basemap=fetch_basemap,
     compose_flood_png=compose_flood_png,
     fetch_osm_roads=fetch_osm_roads,
+    fetch_osm_roads_raw=fetch_osm_roads_raw,
+    load_local_osm_roads=load_local_osm_roads,
     sample_dem_bilinear=sample_dem_bilinear,
     classify_roads=classify_roads,
     classify_roads_access=classify_roads_access,
@@ -2992,6 +3096,13 @@ def _cached_basemap(bbox, zoom, provider_label):
 def _cached_osm_roads(bbox):
     """Cache wrapper around fetch_osm_roads (one Overpass query per ROI)."""
     return fdem.fetch_osm_roads(bbox)
+
+
+@st.cache_data(show_spinner=False)
+def _cached_local_roads(path, mtime, bbox):
+    """Cache wrapper around load_local_osm_roads (mtime in the key, so an
+    updated roads file is picked up)."""
+    return fdem.load_local_osm_roads(path, bbox)
 
 
 def _backfill_dropped_actions(df):
@@ -5808,13 +5919,27 @@ def main():
                             _base_img, _ = _cached_basemap(_bbr, _zt, _rbase_label)
                         except Exception as _e:
                             st.warning("Basemap tiles unavailable; roads will draw on a plain background. %s" % _e)
-                        try:
-                            _roads = _cached_osm_roads(_bbr)
-                        except Exception as _e:
-                            st.error(
-                                "Could not download OSM roads from Overpass (needs internet at runtime; the "
-                                "public Overpass server may be busy - try again in a moment). %s" % _e
-                            )
+                        # A saved roads file next to the data ({slug}_osm_roads.json,
+                        # made by download_osm_roads.py) is used first, so the maps
+                        # don't depend on the public Overpass servers being reachable.
+                        _rslug = (loc_entry or {}).get('location_slug')
+                        _rlocal = f"{_rslug}_osm_roads.json" if _rslug else None
+                        if _rlocal and os.path.exists(_rlocal):
+                            _roads = _cached_local_roads(_rlocal, os.path.getmtime(_rlocal), _bbr)
+                        if _roads is None:
+                            try:
+                                _roads = _cached_osm_roads(_bbr)
+                            except Exception as _e:
+                                st.error(
+                                    "Could not download OSM roads from Overpass (needs internet at runtime; the "
+                                    "public Overpass servers may be busy - try again in a moment). %s" % _e
+                                )
+                                if _rlocal:
+                                    st.caption(
+                                        f"To stop depending on Overpass, run download_osm_roads.py on a computer "
+                                        f"with internet, in the folder with this location's data, and add the "
+                                        f"`{_rlocal}` it writes next to app.py."
+                                    )
 
                 if _Zm is not None and _ext is not None and _roads is not None:
                     if _base_img is None:
