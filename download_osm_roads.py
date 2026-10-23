@@ -101,11 +101,20 @@ def main():
         bbox = [round(cx - hw, 5), round(cy - hh, 5), round(cx + hw, 5), round(cy + hh, 5)]
         print(f"{slug}: fetching roads for {bbox} ...", flush=True)
         raw, host = fetch_overpass(bbox)
-        n = sum(1 for e in raw.get("elements", []) if e.get("type") == "way")
+        # Keep only what the app reads (way geometry + highway/name/ref tags)
+        # so the file stays small enough to commit.
+        ways = []
+        for e in raw.get("elements", []):
+            if e.get("type") != "way" or "geometry" not in e:
+                continue
+            tags = {k: v for k, v in (e.get("tags") or {}).items() if k in ("highway", "name", "ref")}
+            geom = [{"lon": round(g["lon"], 7), "lat": round(g["lat"], 7)} for g in e["geometry"]]
+            ways.append({"type": "way", "tags": tags, "geometry": geom})
+        n = len(ways)
         out = f"{slug}_osm_roads.json"
         with open(out, "w", encoding="utf-8") as fh:
             json.dump({"bbox": bbox, "created": date.today().isoformat(), "source": host,
-                       "overpass": raw}, fh)
+                       "overpass": {"elements": ways}}, fh, separators=(",", ":"))
         print(f"  wrote {out}: {n} road ways (from {host})")
 
 
