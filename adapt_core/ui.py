@@ -290,6 +290,38 @@ def sidebar_brand():
     )
 
 
+def dismiss_first_load_page_not_found():
+    """Streamlit 1.40 quirk: on the first session after the server starts,
+    opening a page URL directly (for example /maps) shows a "Page not found"
+    dialog even though the page then renders, because the server only learns
+    about st.navigation pages after its first script run. On a session's
+    first run, close that one dialog if it appears. Nothing else is touched."""
+    ss = st.session_state
+    if ss.get("_pnf_guard_done"):
+        return
+    ss["_pnf_guard_done"] = True
+    import streamlit.components.v1 as components
+    components.html(
+        """<script>
+        (function () {
+          try {
+            var doc = window.parent.document, t0 = Date.now();
+            var iv = setInterval(function () {
+              doc.querySelectorAll('[role="dialog"]').forEach(function (d) {
+                if ((d.innerText || '').indexOf('Page not found') === 0) {
+                  var b = d.querySelector('button[aria-label="Close"]');
+                  if (b) { b.click(); }
+                }
+              });
+              if (Date.now() - t0 > 10000) { clearInterval(iv); }
+            }, 120);
+          } catch (e) {}
+        })();
+        </script>""",
+        height=0,
+    )
+
+
 def hide_sidebar():
     """Landing page only: hide the sidebar and its toggle so the page reads as
     a single clean canvas. Module pages render the sidebar normally."""
