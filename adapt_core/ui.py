@@ -248,14 +248,22 @@ def inject_css(accent=C.SKY, accent_dark=C.SKY_DARK):
 
 
 @st.cache_data(show_spinner=False)
-def image_data_uri(path, mtime, max_px=480):
+def image_data_uri(path, mtime, max_px=480, reverse=False):
     """PNG data URI of an image, downscaled so the page stays light. `mtime`
-    is only part of the cache key, so a replaced file is picked up."""
+    is only part of the cache key, so a replaced file is picked up.
+    reverse=True turns the logo's dark (navy) parts near-white for use on a
+    dark background; the blue and teal parts are left as they are."""
     import base64
     import io
+    import numpy as np
     from PIL import Image
     im = Image.open(path).convert("RGBA")
     im.thumbnail((max_px, max_px), Image.LANCZOS)
+    if reverse:
+        a = np.array(im).astype(float)
+        t = np.clip((140.0 - a[..., :3].max(axis=2)) / 35.0, 0, 1)[..., None]
+        a[..., :3] = a[..., :3] * (1 - t) + np.array([248.0, 250.0, 252.0]) * t
+        im = Image.fromarray(a.astype(np.uint8))
     bbox = im.getbbox()
     if bbox:
         im = im.crop(bbox)
@@ -294,6 +302,59 @@ def hide_sidebar():
         ".adapt-footer div { display: inline; margin: 0 0.45rem; }"
         "hr { margin: 0.6rem 0 0.2rem 0 !important; }"
         "</style>",
+        unsafe_allow_html=True,
+    )
+
+
+def landing_dark():
+    """Landing page only: dark canvas and hero; the location picker and the
+    module cards stay light so the choices stand out."""
+    st.markdown(
+        """<style>
+        .stApp {
+            background:
+              radial-gradient(1100px 520px at 88% -8%, rgba(14,165,233,0.20), transparent 60%),
+              radial-gradient(900px 480px at -6% 105%, rgba(20,184,166,0.16), transparent 58%),
+              linear-gradient(160deg, #0b1220 0%, #0f172a 55%, #111c33 100%) !important;
+        }
+        header[data-testid="stHeader"] { background: transparent !important; }
+        header[data-testid="stHeader"] button, header[data-testid="stHeader"] [data-testid="stMainMenu"] { color: #cbd5e1 !important; }
+        .adapt-hero.dark {
+            display: flex; align-items: center; gap: 2.2rem; padding: 1.5rem 2.4rem 1.5rem 2.6rem; margin-top: 0.3rem;
+            border-radius: 22px; border: 1px solid rgba(148,163,184,0.18);
+            background: linear-gradient(135deg, rgba(30,41,59,0.72) 0%, rgba(15,23,42,0.55) 100%);
+            box-shadow: 0 24px 60px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.04);
+        }
+        .adapt-hero.dark .hero-text { flex: 1 1 62%; min-width: 0; }
+        .adapt-hero.dark .hero-logo { flex: 0 0 auto; display: flex; justify-content: flex-end; }
+        .adapt-hero.dark .hero-logo img { height: 198px; width: auto; display: block;
+            filter: drop-shadow(0 10px 24px rgba(14,165,233,0.25)); }
+        .adapt-hero.dark .kicker { font-size: 0.74rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase;
+            color: #7dd3fc; margin-bottom: 0.6rem; }
+        .adapt-hero.dark h1 { font-size: 2.15rem; font-weight: 800; line-height: 1.12; margin: 0 0 0.6rem 0;
+            color: #f8fafc; letter-spacing: -0.02em; max-width: 760px; }
+        .adapt-hero.dark p { font-size: 1.04rem; line-height: 1.55; color: #cbd5e1; margin: 0; max-width: 640px; }
+        /* labels and text on the dark canvas */
+        .stApp [data-testid="stWidgetLabel"] p { color: #cbd5e1 !important; font-weight: 600; }
+        .adapt-siteline { color: #94a3b8 !important; }
+        .adapt-siteline b { color: #f8fafc !important; }
+        /* light choices: location picker, password form, module cards */
+        .stApp .stSelectbox > div > div { background: #ffffff !important; color: #0f172a !important;
+            border: 1px solid rgba(255,255,255,0.0) !important; box-shadow: 0 6px 18px rgba(0,0,0,0.25); }
+        .stApp [data-testid="stForm"] { background: #ffffff; border: none !important; box-shadow: 0 10px 28px rgba(0,0,0,0.3); }
+        .stApp [data-testid="stForm"] [data-testid="stWidgetLabel"] p { color: #334155 !important; }
+        .st-key-gate_inline [data-testid="stForm"] { background: transparent !important; box-shadow: none !important;
+            padding: 0 !important; border: none !important; }
+        .st-key-gate_inline input { background: #ffffff !important; color: #0f172a !important; }
+        .st-key-gate_inline [data-testid="stTextInputRootElement"] { box-shadow: 0 6px 18px rgba(0,0,0,0.25); border-radius: 8px; }
+        .adapt-module { border: 1px solid rgba(255,255,255,0.0) !important; box-shadow: 0 10px 30px rgba(0,0,0,0.30) !important; }
+        [class*="st-key-go_"]:hover .adapt-module { box-shadow: 0 18px 44px rgba(0,0,0,0.45) !important; }
+        /* footer */
+        .stApp hr { border-color: rgba(148,163,184,0.18) !important; }
+        .adapt-footer, .adapt-footer div { color: #94a3b8 !important; }
+        .adapt-footer .org { color: #cbd5e1 !important; }
+        .adapt-footer .lic { color: #64748b !important; }
+        </style>""",
         unsafe_allow_html=True,
     )
 
@@ -393,10 +454,22 @@ def location_gate(location_name, cfg, compact=False):
     pw = access_password()
     form_key = f"gate_{'c' if compact else 'f'}_{slugify(location_name)}"
     if compact:
-        container = st.container()
-    else:
-        st.markdown("<div style='height:1rem'></div>", unsafe_allow_html=True)
-        _, container, _ = st.columns([1, 1.25, 1])
+        # One row: password field + Unlock. A wrong password shows a toast so
+        # the layout does not grow.
+        with st.form(form_key, clear_on_submit=True, border=False):
+            a, b = st.columns([0.68, 0.32], vertical_alignment="bottom")
+            entered = a.text_input("Access password", type="password", label_visibility="collapsed",
+                                   placeholder=f"🔒 Password for {location_name} results")
+            ok = b.form_submit_button("Unlock", type="primary", use_container_width=True)
+        if ok:
+            if entered == pw:
+                st.session_state.setdefault("unlocked_locations", set()).add(location_name)
+                st.rerun()
+            else:
+                st.toast("Incorrect password.", icon="🔒")
+        return False
+    st.markdown("<div style='height:1rem'></div>", unsafe_allow_html=True)
+    _, container, _ = st.columns([1, 1.25, 1])
     with container:
         st.markdown(
             "<div class='adapt-card accent'><div class='icon'>🔒</div>"

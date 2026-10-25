@@ -38,15 +38,17 @@ def _site_line(ctx):
 
 def render(ctx):
     ss = ctx.ss
+    ui.landing_dark()
     art = ""
     logo = ui.first_existing(C.LOGO_FULL_CANDIDATES)
     if logo:
-        art = f"<img src='{ui.image_data_uri(logo, os.path.getmtime(logo), 520)}' alt='ADAPT'/>"
+        art = f"<img src='{ui.image_data_uri(logo, os.path.getmtime(logo), 520, reverse=True)}' alt='ADAPT'/>"
     st.markdown(
-        "<div class='adapt-hero light'><div class='hero-text'>"
+        "<div class='adapt-hero dark'><div class='hero-text'>"
         "<div class='kicker'>Assessment of Damage and Adaptation Planning Tool</div>"
-        "<h1>Flood damage and adaptation planning, one building at a time.</h1>"
-        "<p>Building-level flood damage under sea-level rise, and what each adaptation measure would save.</p>"
+        "<h1>Coastal flood adaptation, from each home to the whole community.</h1>"
+        "<p>A decision support tool co-developed with tribal nations and towns in New York and Virginia. "
+        "It shows how flood damage grows with sea-level rise and what each adaptation option would change.</p>"
         f"</div><div class='hero-logo'>{art}</div></div>",
         unsafe_allow_html=True,
     )
@@ -63,14 +65,10 @@ def render(ctx):
     locked = ui.is_protected(cfg) and not ui.location_unlocked(ss.cv_location)
     with c2:
         if locked:
-            st.markdown("<span class='adapt-lock'>🔒 Results for this community are password protected.</span>",
-                        unsafe_allow_html=True)
+            with ctx._keyed_container("gate_inline"):
+                ui.location_gate(ss.cv_location, cfg, compact=True)
         else:
             st.markdown(f"<div class='adapt-siteline'>{_site_line(ctx)}</div>", unsafe_allow_html=True)
-    if locked:
-        g1, _ = st.columns([0.36, 0.64])
-        with g1:
-            ui.location_gate(ss.cv_location, cfg, compact=True)
 
     # Each card is one click: the HTML card is drawn, and a full-size,
     # invisible page link is laid over it (see the st-key-go_ rules in ui.py).
