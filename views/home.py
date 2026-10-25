@@ -9,11 +9,6 @@ from adapt_core import ui
 from adapt_core.helpers import fmt_money_short
 from views import _context as X
 
-_WHO = {
-    "community": "Residents, businesses and property owners",
-    "planners": "Planners, agencies and community leaders",
-    "developer": "The project team",
-}
 
 
 def _site_line(ctx):
@@ -75,7 +70,8 @@ def render(ctx):
     st.markdown("<style>" + "".join(
         f".st-key-go_{k}:hover .adapt-module {{ border-color: {m['accent']}; }}" for k, m in C.MODULES.items()
     ) + "</style>", unsafe_allow_html=True)
-    cols = st.columns(3, gap="medium")
+    # Developer is the narrow card; the two public modules share the rest equally.
+    cols = st.columns([1, 1, 0.56], gap="medium")
     for col, (key, m) in zip(cols, C.MODULES.items()):
         with col:
             with ctx._keyed_container(f"go_{key}"):
@@ -83,7 +79,7 @@ def render(ctx):
                     f"<div class='adapt-module'>"
                     f"<div class='icon' style='background:{m['accent']}22; color:{m['accent']}'>{m['icon']}</div>"
                     f"<h3>{_html.escape(m['title'])}</h3>"
-                    f"<div class='who'>{_html.escape(_WHO[key])}</div>"
+                    f"<div class='who'>{_html.escape(m['subtitle'])}</div>"
                     f"<div class='go' style='color:{m['accent']}'>Open <span>→</span></div></div>",
                     unsafe_allow_html=True,
                 )

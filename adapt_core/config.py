@@ -68,16 +68,16 @@ LOCATION_DEFAULTS = {
 # ---------------------------------------------------------------------------
 MODULES = {
     "community": {
-        "title": "Community Members",
-        "subtitle": "Residents, businesses and property owners",
+        "title": "Households and Businesses",
+        "subtitle": "Flood risk and adaptation options for one building",
         "icon": "🏠",
         "accent": "#0ea5e9",
         "blurb": ("See which buildings flood, how often, and what each adaptation option "
                   "would do for a home or business like yours."),
     },
     "planners": {
-        "title": "Decision Makers",
-        "subtitle": "City planners, agencies and community leaders",
+        "title": "Community Planning",
+        "subtitle": "Community-wide damage, flood and road maps",
         "icon": "🏛️",
         "accent": "#14b8a6",
         "blurb": ("Community-wide damage, flood and road maps under sea-level rise, and how "
@@ -85,7 +85,7 @@ MODULES = {
     },
     "developer": {
         "title": "Developer",
-        "subtitle": "Datasets, curves and the damage model",
+        "subtitle": "Data, curves and model runs",
         "icon": "🛠️",
         "accent": "#f59e0b",
         "blurb": ("Manage building inventories and settings, review the depth-damage curves, "

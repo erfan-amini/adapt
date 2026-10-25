@@ -9,8 +9,8 @@ has three modules behind a landing page:
 
 | Module | For | Pages |
 |---|---|---|
-| Community Members | residents, businesses, property owners | Dynamic maps, My building |
-| Decision Makers | planners, agencies, community leaders | Community overview, Flood maps, Road maps, Damage distributions |
+| Households and Businesses | residents, businesses, property owners | Dynamic maps, My building |
+| Community Planning | planners, agencies, community leaders, residents | Community overview, Flood maps, Road maps, Damage distributions |
 | Developer | the project team | Data and settings, NSI survey tool, Fragility curves, Run the model |
 
 Access: locations flagged `protected` in `data/locations.json` (Shinnecock and Pamunkey by
