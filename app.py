@@ -66,12 +66,7 @@ ST_PAGES = {p[0]: _make_page(*p) for p in PAGES}
 # ---------------------------------------------------------------------------
 def _sidebar(module, available_locations, registry):
     with st.sidebar:
-        if os.path.exists(C.LOGO_PATH):
-            st.image(C.LOGO_PATH, use_container_width=True)
-        else:
-            st.markdown("<div class='adapt-brand'><span class='word'>ADAPT</span>"
-                        "<span class='sub'>Assessment of Damage &amp; Adaptation Planning Tool</span></div>",
-                        unsafe_allow_html=True)
+        ui.sidebar_brand()
         st.page_link(ST_PAGES["home"], label="Home", icon="🏠")
         if available_locations:
             X.location_selector(available_locations, registry, key="w_location_side")
