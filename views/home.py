@@ -42,7 +42,7 @@ def render(ctx):
     art = ""
     logo = ui.first_existing(C.LOGO_FULL_CANDIDATES)
     if logo:
-        art = f"<img src='{ui.image_data_uri(logo, os.path.getmtime(logo), 520, reverse=True)}' alt='ADAPT'/>"
+        art = f"<img src='{ui.image_data_uri(logo, os.path.getmtime(logo), 420)}' alt='ADAPT'/>"
     st.markdown(
         "<div class='adapt-hero dark'><div class='hero-text'>"
         "<div class='kicker'>Assessment of Damage and Adaptation Planning Tool</div>"
