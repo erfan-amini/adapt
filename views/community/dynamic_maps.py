@@ -96,14 +96,10 @@ def render(ctx):
         # occurrence-count distribution drives the color. Always defined so
         # downstream code can reference it regardless of the active view.
         flood_pct_key = 'occ_mean'
-        # A fixed slot (always present, empty outside this view) keeps the
-        # elements below at the same position, so an open Advanced options
-        # panel stays open when the view changes.
-        _fo_slot = ctx._keyed_container("map_fo_row")
         if map_view == "Flood Occurrences":
             _FP = {"Mean (average)": 'occ_mean', "P10 (low)": 'occ_P10',
                    "Median (P50)": 'occ_P50', "P90 (high)": 'occ_P90'}
-            with _fo_slot:
+            with ctx._keyed_container("map_fo_row"):
                 _fp_label = st.segmented_control(
                     "Flood-occurrence statistic (across the 1,000 water-level realizations)",
                     options=list(_FP), default="Mean (average)",
@@ -141,9 +137,9 @@ def render(ctx):
         # always rendered (hidden with CSS when the switch is off), so their
         # values persist, and the open/closed state survives view changes.
         adv_on = st.toggle("⚙️ Advanced options", key="map_adv_toggle")
-        if not adv_on:
-            st.markdown("<style>.st-key-map_adv_box { display: none !important; }</style>", unsafe_allow_html=True)
         with ctx._keyed_container("map_adv_box"):
+            if not adv_on:
+                st.markdown("<style>.st-key-map_adv_box { display: none !important; }</style>", unsafe_allow_html=True)
             a1, a2, a3, a4 = st.columns([1.15, 1.25, 1, 1], vertical_alignment="center")
             with a1:
                 basemap_choice = st.segmented_control(
@@ -213,26 +209,6 @@ def render(ctx):
                 with btn_b:
                     clear_clicked = st.button("✖ Clear", key="map_search_clear", use_container_width=True)
         _cutoff_spec = _CUTOFF_OPTIONS[cutoff_label]
-
-        # Map-view row styling: full-width segmented buttons.
-        st.markdown(
-            "<style>"
-            ".st-key-map_adv_box { border: 1px solid #e2e8f0; border-radius: 14px; padding: 0.9rem 1.1rem 0.4rem 1.1rem; "
-            "  background: #f8fafc; }"
-            ".st-key-map_view_row [data-testid='stButtonGroup'] { width: 100% !important; }"
-            # Streamlit sizes these buttons to their text, so a grid (not flex) is
-            # what makes the four views share the full row equally.
-            ".st-key-map_view_row [data-testid='stButtonGroup'] > div { display: grid !important; width: 100% !important; "
-            "  max-width: none !important; "
-            "  grid-template-columns: repeat(4, minmax(max-content, 1fr)) !important; }"
-            ".st-key-map_view_row [data-testid='stButtonGroup'] button { width: auto !important; max-width: none !important; "
-            "  justify-content: center; padding: 0.7rem 1rem; min-height: 3rem; }"
-            ".st-key-map_view_row [data-testid='stButtonGroup'] button p { font-size: 0.98rem; font-weight: 600; }"
-            ".st-key-map_view_row [data-testid='stButtonGroup'] button:first-child { border-radius: 12px 0 0 12px; }"
-            ".st-key-map_view_row [data-testid='stButtonGroup'] button:last-child { border-radius: 0 12px 12px 0; }"
-            "</style>",
-            unsafe_allow_html=True,
-        )
 
         # Resolve the click → session-state interaction
         import time as _time_mod

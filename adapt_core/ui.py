@@ -235,6 +235,15 @@ section[data-testid="stSidebar"] [data-testid="stPageLink-NavLink"] p { color: #
 [class*="st-key-go_"]:hover .adapt-module .go span { transform: translateX(3px); }
 .adapt-module .go span { display: inline-block; transition: transform .15s ease; }
 
+/* ---- dynamic maps: full-width map-view row and the advanced panel ---- */
+.st-key-map_adv_box { border: 1px solid #e2e8f0; border-radius: 14px; padding: 0.9rem 1.1rem 0.4rem 1.1rem;   background: #f8fafc; }
+.st-key-map_view_row [data-testid='stButtonGroup'] { width: 100%% !important; }
+.st-key-map_view_row [data-testid='stButtonGroup'] > div { display: grid !important; width: 100%% !important;   max-width: none !important;   grid-template-columns: repeat(4, minmax(max-content, 1fr)) !important; }
+.st-key-map_view_row [data-testid='stButtonGroup'] button { width: auto !important; max-width: none !important;   justify-content: center; padding: 0.7rem 1rem; min-height: 3rem; }
+.st-key-map_view_row [data-testid='stButtonGroup'] button p { font-size: 0.98rem; font-weight: 600; }
+.st-key-map_view_row [data-testid='stButtonGroup'] button:first-child { border-radius: 12px 0 0 12px; }
+.st-key-map_view_row [data-testid='stButtonGroup'] button:last-child { border-radius: 0 12px 12px 0; }
+
 .adapt-footer { text-align: center; padding: 1.3rem 0 0.4rem 0; color: #64748b; font-size: 0.9rem; line-height: 1.55; }
 .adapt-footer .org { font-weight: 600; color: #334155; }
 .adapt-footer .lic { font-size: 0.8rem; color: #94a3b8; margin-top: 0.35rem; }
