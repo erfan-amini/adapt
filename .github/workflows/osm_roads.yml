@@ -1,0 +1,40 @@
+# Saves each location's OpenStreetMap roads to <slug>_osm_roads.json so the
+# app's Road maps page does not depend on the public Overpass servers being
+# reachable from Streamlit Cloud. Runs when the download script or this file
+# changes, or by hand from the Actions tab (Run workflow).
+name: Save OSM roads
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - download_osm_roads.py
+      - .github/workflows/osm_roads.yml
+
+permissions:
+  contents: write
+
+jobs:
+  roads:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install
+        run: pip install numpy pandas requests
+      - name: Download roads
+        run: python download_osm_roads.py
+      - name: Commit roads files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add *_osm_roads.json
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "Save OSM roads for the Road maps page"
+            git push
+          fi

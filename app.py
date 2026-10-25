@@ -2365,25 +2365,34 @@ def fetch_osm_roads_raw(bbox, timeout=60, endpoints=OVERPASS_ENDPOINTS):
     query = (f"[out:json][timeout:{timeout}];"
              f'way["highway"]({lat_min},{lon_min},{lat_max},{lon_max});'
              f"out body geom;")
+    import time as _time
     headers = {"User-Agent": "ADAPT-FloodTool/1.0 (Columbia CCSR research app)"}
     errors = []
     retry_ipv4 = False
+    deadline = _time.monotonic() + 150.0           # give up after ~2.5 minutes in total
     for attempt in (0, 1):
         if attempt == 1:
             if not retry_ipv4:
                 break
             _force_ipv4_requests()
         for url in endpoints:
+            if _time.monotonic() > deadline:
+                errors.append("stopped: no answer within 2.5 minutes")
+                break
             host = url.split("/")[2]
             try:
                 resp = requests.post(url, data={"data": query}, headers=headers,
-                                     timeout=(10, timeout + 15))
+                                     timeout=(8, 45))
             except requests.exceptions.ConnectionError as exc:
-                retry_ipv4 = True
-                errors.append(f"{host}: {exc}")
+                # Retry over IPv4 only for the no-IPv6-route symptom.
+                msg = str(exc)
+                if ("Errno 99" in msg or "Cannot assign requested address" in msg
+                        or "Errno 101" in msg or "Network is unreachable" in msg):
+                    retry_ipv4 = True
+                errors.append(f"{host}: {str(exc)[:160]}")
                 continue
             except Exception as exc:                       # noqa: BLE001
-                errors.append(f"{host}: {exc}")
+                errors.append(f"{host}: {str(exc)[:160]}")
                 continue
             if resp.status_code != 200:
                 errors.append(f"{host}: HTTP {resp.status_code}")
