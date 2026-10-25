@@ -41,7 +41,7 @@ def render(ctx):
     st.markdown(
         "<div class='adapt-hero dark'><div class='hero-text'>"
         "<div class='kicker'>Assessment of Damage and Adaptation Planning Tool</div>"
-        "<h1>Coastal flood adaptation, building by building.</h1>"
+        "<h1>Know your flood risk. Compare your options.</h1>"
         "<p>A decision support tool co-developed with tribal nations and towns in New York and Virginia. "
         "It shows how flood damage grows with sea-level rise and what each adaptation option would change.</p>"
         f"</div><div class='hero-logo'>{art}</div></div>",
