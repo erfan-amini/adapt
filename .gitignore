@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+.streamlit/secrets.toml
+data/*/DDD___*___NSI.backup_*.xlsx
+.DS_Store
