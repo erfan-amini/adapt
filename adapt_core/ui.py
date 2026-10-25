@@ -319,21 +319,33 @@ def landing_dark():
         }
         header[data-testid="stHeader"] { background: transparent !important; }
         header[data-testid="stHeader"] button, header[data-testid="stHeader"] [data-testid="stMainMenu"] { color: #cbd5e1 !important; }
+        /* hero: a light card on the dark canvas, so the original logo can sit in it */
         .adapt-hero.dark {
-            display: flex; align-items: center; gap: 2.2rem; padding: 1.5rem 2.4rem 1.5rem 2.6rem; margin-top: 0.3rem;
-            border-radius: 22px; border: 1px solid rgba(148,163,184,0.18);
-            background: linear-gradient(135deg, rgba(30,41,59,0.72) 0%, rgba(15,23,42,0.55) 100%);
-            box-shadow: 0 24px 60px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.04);
+            display: flex; align-items: center; gap: 2rem; padding: 1.05rem 2rem 1.05rem 2.2rem; margin-top: 0.1rem;
+            border-radius: 20px; border: none; color: #0f172a;
+            background: radial-gradient(800px 300px at 100% 0%, rgba(14,165,233,0.14), transparent 60%),
+                        radial-gradient(600px 260px at 0% 100%, rgba(20,184,166,0.12), transparent 55%),
+                        linear-gradient(135deg, #ffffff 0%, #f1f7fd 100%);
+            box-shadow: 0 18px 48px rgba(0,0,0,0.35);
         }
         .adapt-hero.dark .hero-text { flex: 1 1 62%; min-width: 0; }
         .adapt-hero.dark .hero-logo { flex: 0 0 auto; display: flex; justify-content: flex-end; }
-        .adapt-hero.dark .hero-logo img { height: 198px; width: auto; display: block;
-            filter: drop-shadow(0 10px 24px rgba(14,165,233,0.25)); }
-        .adapt-hero.dark .kicker { font-size: 0.74rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase;
-            color: #7dd3fc; margin-bottom: 0.6rem; }
-        .adapt-hero.dark h1 { font-size: 2.15rem; font-weight: 800; line-height: 1.12; margin: 0 0 0.6rem 0;
-            color: #f8fafc; letter-spacing: -0.02em; max-width: 760px; }
-        .adapt-hero.dark p { font-size: 1.04rem; line-height: 1.55; color: #cbd5e1; margin: 0; max-width: 640px; }
+        .adapt-hero.dark .hero-logo img { height: 148px; width: auto; display: block; }
+        .adapt-hero.dark .kicker { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase;
+            color: #0284c7; margin-bottom: 0.45rem; }
+        .adapt-hero.dark h1 { font-size: 1.85rem; font-weight: 800; line-height: 1.12; margin: 0 0 0.45rem 0;
+            color: #0f172a; letter-spacing: -0.02em; max-width: 720px; padding: 0; text-wrap: balance; }
+        .adapt-hero.dark p { font-size: 0.98rem; line-height: 1.5; color: #475569; margin: 0; max-width: 660px; text-wrap: pretty; }
+        /* tighter vertical rhythm on the landing page */
+        .stApp .block-container { padding-top: 1.2rem !important; padding-bottom: 1.2rem !important;
+            min-height: 100vh; display: flex; flex-direction: column; justify-content: center; }
+        .adapt-hero.dark { margin-bottom: 0.35rem; }
+        .adapt-module .go { top: 1.05rem !important; bottom: auto !important; right: 1.15rem !important; }
+        .stApp [data-testid="stVerticalBlock"] { gap: 0.7rem; }
+        .adapt-module { min-height: 150px !important; padding: 0.95rem 1.15rem 0.9rem 1.15rem !important; }
+        .adapt-module .icon { width: 42px !important; height: 42px !important; font-size: 1.3rem !important;
+            border-radius: 12px !important; margin-bottom: 0.65rem !important; }
+        .adapt-module h3 { font-size: 1.12rem !important; }
         /* labels and text on the dark canvas */
         .stApp [data-testid="stWidgetLabel"] p { color: #cbd5e1 !important; font-weight: 600; }
         .adapt-siteline { color: #94a3b8 !important; }
