@@ -1,15 +1,15 @@
 """Save OpenStreetMap roads for each ADAPT location so the app's Road maps
 page works without reaching the public Overpass servers.
 
-Run it on a computer with internet, in the folder that holds the app data:
+Run it on a computer with internet, from the repo root:
 
-    python download_osm_roads.py                 # every *_bldg_lookup.csv here
-    python download_osm_roads.py Shinnecock      # one location (file prefix)
+    python download_osm_roads.py                 # every data/<Slug>/<Slug>_bldg_lookup.csv
+    python download_osm_roads.py Shinnecock      # one location (folder slug)
 
-For each location it writes <slug>_osm_roads.json. Put that file next to
-app.py (same folder as the other <slug>_* files) and redeploy. The app reads
-the file first and only queries Overpass if the file is missing or does not
-cover the map area.
+For each location it writes data/<Slug>/<Slug>_osm_roads.json next to that
+location's other files (the legacy flat layout, *_bldg_lookup.csv in the
+current folder, is still handled). The app reads the file first and only
+queries Overpass if the file is missing or does not cover the map area.
 
 The saved area is the map area the app uses at its widest zoom setting
 (Zoom slider at 0.5) plus a margin, so every zoom setting is covered.
@@ -84,9 +84,10 @@ def fetch_overpass(bbox, timeout=90):
 
 def main():
     only = set(sys.argv[1:])
-    lookups = sorted(glob.glob("*_bldg_lookup.csv"))
+    lookups = sorted(glob.glob(os.path.join("data", "*", "*_bldg_lookup.csv"))) or \
+        sorted(glob.glob("*_bldg_lookup.csv"))
     if not lookups:
-        sys.exit("No *_bldg_lookup.csv in this folder. Run the script where the app data is.")
+        sys.exit("No <Slug>_bldg_lookup.csv found under data/<Slug>/ or in this folder.")
     for path in lookups:
         slug = os.path.basename(path)[:-len("_bldg_lookup.csv")]
         if only and slug not in only:
@@ -111,7 +112,7 @@ def main():
             geom = [{"lon": round(g["lon"], 7), "lat": round(g["lat"], 7)} for g in e["geometry"]]
             ways.append({"type": "way", "tags": tags, "geometry": geom})
         n = len(ways)
-        out = f"{slug}_osm_roads.json"
+        out = os.path.join(os.path.dirname(path), f"{slug}_osm_roads.json")
         with open(out, "w", encoding="utf-8") as fh:
             json.dump({"bbox": bbox, "created": date.today().isoformat(), "source": host,
                        "overpass": {"elements": ways}}, fh, separators=(",", ":"))
