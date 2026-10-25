@@ -183,58 +183,50 @@ section[data-testid="stSidebar"] [data-testid="stPageLink-NavLink"] p { color: #
 .adapt-card.accent + div [data-testid="stForm"], .adapt-card.accent ~ div [data-testid="stForm"] { margin-top: 0.5rem; }
 
 /* ---- landing page ---- */
-.adapt-hero {
-    position: relative; overflow: hidden; border-radius: 22px; padding: 2.6rem 2.8rem 2.4rem 2.8rem;
-    background: radial-gradient(1200px 500px at 85%% -10%%, rgba(56,189,248,0.35), transparent 60%%),
-                radial-gradient(900px 400px at 0%% 110%%, rgba(20,184,166,0.28), transparent 55%%),
-                linear-gradient(135deg, %(navy)s 0%%, %(navy2)s 100%%);
-    color: #ffffff; box-shadow: 0 18px 50px rgba(15,23,42,0.22); margin-top: 0.4rem;
+.adapt-hero.light {
+    display: flex; align-items: center; gap: 2.2rem; padding: 1.5rem 2.4rem 1.5rem 2.6rem; margin-top: 0.3rem;
+    border-radius: 22px; border: 1px solid %(line)s; color: #0f172a;
+    background: radial-gradient(900px 320px at 100%% 0%%, rgba(14,165,233,0.16), transparent 60%%),
+                radial-gradient(700px 300px at 0%% 100%%, rgba(20,184,166,0.14), transparent 55%%),
+                linear-gradient(135deg, #ffffff 0%%, #f1f7fd 100%%);
+    box-shadow: 0 10px 30px rgba(15,23,42,0.06);
 }
-.adapt-hero .kicker { font-size: 0.74rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase;
-    color: #7dd3fc; margin-bottom: 0.8rem; }
-.adapt-hero h1 { font-size: 2.45rem; font-weight: 800; line-height: 1.12; margin: 0 0 0.8rem 0; color: #ffffff;
-    letter-spacing: -0.02em; max-width: 820px; }
-.adapt-hero p { font-size: 1.08rem; line-height: 1.6; color: #cbd5e1; margin: 0; max-width: 720px; }
-.adapt-hero .meta { margin-top: 1.4rem; display: flex; gap: 1.6rem; flex-wrap: wrap; font-size: 0.82rem; color: #94a3b8; }
-.adapt-hero .meta b { color: #e2e8f0; font-weight: 600; }
-.adapt-hero.compact { display: flex; align-items: center; gap: 2rem; padding: 1.7rem 2.3rem 1.6rem 2.3rem;
-    border-radius: 20px; margin-top: 0.2rem; }
-.adapt-hero.compact .hero-text { flex: 1 1 60%%; min-width: 0; }
-.adapt-hero.compact .hero-art { flex: 0 0 36%%; max-width: 420px; }
-.adapt-hero.compact .hero-art svg { width: 100%%; height: auto; display: block; }
-.adapt-hero.compact h1 { font-size: 2.05rem; margin-bottom: 0.55rem; }
-.adapt-hero.compact p { font-size: 1.02rem; }
-.adapt-hero.compact .kicker { margin-bottom: 0.55rem; }
+.adapt-hero.light .hero-text { flex: 1 1 62%%; min-width: 0; }
+.adapt-hero.light .hero-logo { flex: 0 0 auto; display: flex; justify-content: flex-end; }
+.adapt-hero.light .hero-logo img { height: 198px; width: auto; display: block; }
+.adapt-hero.light .kicker { font-size: 0.74rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase;
+    color: %(accent_dark)s; margin-bottom: 0.6rem; }
+.adapt-hero.light h1 { font-size: 2.15rem; font-weight: 800; line-height: 1.12; margin: 0 0 0.6rem 0; color: #0f172a;
+    letter-spacing: -0.02em; max-width: 760px; }
+.adapt-hero.light p { font-size: 1.04rem; line-height: 1.55; color: #475569; margin: 0; max-width: 640px; }
 .adapt-siteline { font-size: 0.95rem; color: #475569; padding-bottom: 0.55rem; }
 .adapt-siteline b { color: #0f172a; font-weight: 700; }
-.adapt-section { font-size: 0.74rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
-    color: #64748b; margin: 1.6rem 0 0.6rem 0; }
-.adapt-module {
-    background: #ffffff; border: 1px solid %(line)s; border-radius: 18px; padding: 1.15rem 1.2rem 1.0rem 1.2rem;
-    box-shadow: 0 1px 2px rgba(15,23,42,0.04); transition: transform .15s ease, box-shadow .15s ease;
-    min-height: 196px; margin: 0.3rem 0 0.55rem 0;
-}
-.adapt-module .top { display: flex; align-items: center; gap: 0.85rem; margin-bottom: 0.8rem; }
-.adapt-module .top .icon { margin-bottom: 0; flex: 0 0 auto; }
-.adapt-module:hover { transform: translateY(-2px); box-shadow: 0 12px 30px rgba(15,23,42,0.10); }
-.adapt-module .icon { width: 46px; height: 46px; border-radius: 12px; display: flex; align-items: center;
-    justify-content: center; font-size: 1.45rem; margin-bottom: 0.9rem; }
-.adapt-module h3 { margin: 0 0 0.2rem 0; font-size: 1.2rem !important; color: #0f172a; }
-.adapt-module .who { font-size: 0.82rem; color: #64748b; margin-bottom: 0.6rem; }
-.adapt-module p { font-size: 0.95rem; color: #334155; line-height: 1.55; margin: 0 0 0.8rem 0; }
-.adapt-module .chips { display: flex; flex-wrap: wrap; gap: 6px; }
-.adapt-module .chip { font-size: 0.74rem; font-weight: 600; color: #334155; background: #f1f5f9;
-    border-radius: 999px; padding: 0.22rem 0.6rem; }
 .adapt-lock { display: inline-flex; align-items: center; gap: 6px; font-size: 0.82rem; color: #92400e;
-    background: #fef3c7; border-radius: 999px; padding: 0.3rem 0.7rem; margin-top: 0.3rem; }
-/* page links rendered as buttons on the landing page */
-[class*="st-key-go_"] [data-testid="stPageLink"] a, [class*="st-key-go_"] [data-testid="stPageLink-NavLink"] {
-    display: flex; justify-content: center; align-items: center; width: 100%%; padding: 0.55rem 0.9rem;
-    border-radius: 11px; background: %(navy)s; color: #ffffff !important; font-weight: 600; text-decoration: none;
-    transition: background-color .15s ease;
+    background: #fef3c7; border-radius: 999px; padding: 0.3rem 0.7rem; margin-bottom: 0.45rem; }
+
+/* module cards: the whole card is one click (an invisible page link covers it) */
+[class*="st-key-go_"] { position: relative; }
+[class*="st-key-go_"] [data-testid="stElementContainer"]:has([data-testid="stPageLink"]) {
+    position: absolute; inset: 0; z-index: 3; margin: 0;
 }
-[class*="st-key-go_"] [data-testid="stPageLink"] a:hover, [class*="st-key-go_"] [data-testid="stPageLink-NavLink"]:hover { background: %(accent_dark)s; }
-[class*="st-key-go_"] [data-testid="stPageLink"] a p, [class*="st-key-go_"] [data-testid="stPageLink-NavLink"] p { color: #ffffff !important; }
+[class*="st-key-go_"] [data-testid="stPageLink"], [class*="st-key-go_"] [data-testid="stPageLink"] > div,
+[class*="st-key-go_"] [data-testid="stPageLink"] a, [class*="st-key-go_"] [data-testid="stPageLink-NavLink"] {
+    display: block; width: 100%%; height: 100%%; opacity: 0; cursor: pointer; margin: 0; padding: 0; min-height: 100%%;
+}
+.adapt-module {
+    background: #ffffff; border: 1px solid %(line)s; border-radius: 18px; padding: 1.25rem 1.3rem 1.1rem 1.3rem;
+    box-shadow: 0 1px 2px rgba(15,23,42,0.04); transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+    min-height: 196px; margin: 0.3rem 0 0 0; position: relative;
+}
+[class*="st-key-go_"]:hover .adapt-module { transform: translateY(-3px); box-shadow: 0 14px 34px rgba(15,23,42,0.12); }
+.adapt-module .icon { width: 50px; height: 50px; border-radius: 14px; display: flex; align-items: center;
+    justify-content: center; font-size: 1.55rem; margin-bottom: 0.95rem; }
+.adapt-module h3 { margin: 0 0 0.25rem 0; font-size: 1.22rem !important; color: #0f172a; }
+.adapt-module .who { font-size: 0.86rem; color: #64748b; line-height: 1.45; }
+.adapt-module .go { position: absolute; right: 1.2rem; bottom: 1.0rem; font-size: 0.86rem; font-weight: 700;
+    display: inline-flex; align-items: center; gap: 4px; }
+[class*="st-key-go_"]:hover .adapt-module .go span { transform: translateX(3px); }
+.adapt-module .go span { display: inline-block; transition: transform .15s ease; }
 
 .adapt-footer { text-align: center; padding: 1.3rem 0 0.4rem 0; color: #64748b; font-size: 0.9rem; line-height: 1.55; }
 .adapt-footer .org { font-weight: 600; color: #334155; }
