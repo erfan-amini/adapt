@@ -97,6 +97,24 @@ def render(ctx):
         # (rounded up). Always defined (defaults to the mean) so
         # downstream code can reference it regardless of the active view.
         flood_pct_key = 'occ_mean'
+        # Adaptation Effectiveness - what counts as "damage eliminated". The
+        # legacy rule is a flat $1k on the P90 cumulative damage; the other
+        # options let the reader see how the orange/red split depends on it.
+        _CUTOFF_OPTIONS = {
+            "$1k (legacy)": 1000.0, "$5k": 5000.0, "$10k": 10000.0, "$25k": 25000.0,
+            "$50k": 50000.0, "$100k": 100000.0,
+            "1% of structure value": ("pct", 0.01), "5% of structure value": ("pct", 0.05),
+        }
+        cutoff_label = "$1k (legacy)"
+        if map_view == "Adaptation Effectiveness":
+            cutoff_label = st.selectbox(
+                "Minimal-damage cutoff (P90 cumulative damage at or below this counts as eliminated)",
+                list(_CUTOFF_OPTIONS.keys()), index=0, key="map_ae_cutoff",
+                help="A building is classified by the cheapest measure that brings its 90th-percentile "
+                     "cumulative damage through the target year to or below this cutoff. The cutoff is "
+                     "also the 'no damage' line for the green category.",
+            )
+        _cutoff_spec = _CUTOFF_OPTIONS[cutoff_label]
         if map_view == "Flood Occurrences":
             _fp_label = st.radio(
                 "Flood-occurrence statistic (across the 1,000 MC water-level realizations)",
@@ -598,6 +616,7 @@ def render(ctx):
 
                 fig_map = go.Figure()
                 bin_caption_extra = ""  # for the Damage Bins view
+                ae_gap_note = ""        # for the Adaptation Effectiveness view
                 flood_occ_note = ""     # for the Flood Occurrences view
                 _flood_occ_df = None    # populated by the Flood Occurrences view
 
@@ -719,7 +738,13 @@ def render(ctx):
                             f"Elevate. Missing: {', '.join(missing)}"
                         )
                     else:
-                        thr = ZERO_THRESH_DISPLAY  # treat damages below $1k as zero
+                        if isinstance(_cutoff_spec, tuple):
+                            _sv = pd.to_numeric(df_map.get('structure_value'), errors='coerce') \
+                                if 'structure_value' in df_map.columns else pd.Series(np.nan, index=df_map.index)
+                            thr = np.where(np.isfinite(_sv.values.astype(float)),
+                                           _sv.values.astype(float) * _cutoff_spec[1], ZERO_THRESH_DISPLAY)
+                        else:
+                            thr = float(_cutoff_spec)   # legacy default: $1k counts as zero
 
                         # Preserve NaN so missing retrofit values don't silently
                         # count as effective (fillna(0) would do that).
@@ -844,6 +869,19 @@ def render(ctx):
                             & is_under_dfe & ~is_above_bfe] = 5
 
                         df_map['_cat_action'] = cat
+                        # Damaged buildings between the BFE and the DFE whose
+                        # Elevate result equals the baseline (an older run that
+                        # did not compute elevation for them) are not drawn in
+                        # this view. Say so, with the count, instead of leaving
+                        # silent holes on the map.
+                        _elev_missing = np.isnan(elev_raw) | (elev_raw == no_mit_raw)
+                        _n_gap = int(((cat == 6) & is_under_dfe & is_above_bfe & (no_mit > thr) & _elev_missing).sum())
+                        ae_gap_note = (
+                            f" **{_n_gap:,} damaged buildings with first floors between the BFE and the DFE are "
+                            "not drawn**: the current results carry no elevation estimate for them (older "
+                            "elevation rule). Re-running the model in the Developer module includes them."
+                            if _n_gap > 0 else ""
+                        )
 
                         # Legend counts - each building appears in exactly
                         # one bucket, so these add up to (buildings shown).
@@ -1382,28 +1420,30 @@ def render(ctx):
                         "damage." + cap_note
                     )
                 elif map_view == "Adaptation Effectiveness":
+                    _cut_txt = cutoff_label.replace(" (legacy)", "")
                     if mobile_raise_only:
                         st.caption(
                             "🏠 **Mobile-homes-dominated area:** only **raising (elevating) homes** "
                             "is considered. Each building is colored by whether raising it eliminates "
                             "its upper-tail (P90) cumulative damage under the selected year and SLR "
-                            "scenario: **No Damage** (baseline P90 \u2264 $1k - no intervention needed) \u2192 "
-                            "**Elevation** (raising the home brings P90 \u2264 $1k) \u2192 **Residual Damage** "
-                            "(Under-DFE homes **below BFE** where even raising the home leaves P90 above $1k - "
+                            f"scenario: **No Damage** (baseline P90 \u2264 {_cut_txt} - no intervention needed) \u2192 "
+                            f"**Elevation** (raising the home brings P90 \u2264 {_cut_txt}) \u2192 **Residual Damage** "
+                            f"(Under-DFE homes **below BFE** where even raising the home leaves P90 above {_cut_txt} - "
                             "the conversation has to move beyond retrofits, to buyout, relocation, or "
                             "community-scale interventions). Homes at or above BFE are never colored "
                             "Residual. Above-DFE buildings not eliminated by "
                             "raising are not plotted. Non-residential buildings are marked with a "
-                            "black ring. Uncheck the sidebar option to compare all retrofits."
+                            "black ring. Uncheck the sidebar option to compare all retrofits." + ae_gap_note
                         )
                     else:
                         st.caption(
-                            "Each building is colored by the **cheapest measure that eliminates** "
-                            "its P90 damage, in priority order: **No Damage** \u2192 **Raise Utilities** "
-                            "\u2192 **WFP Basement** \u2192 **Elevation** \u2192 **Residual Damage** "
-                            "(Under-DFE, below BFE, and even elevation can't reach $0). Homes at or "
-                            "above BFE, and Above-DFE homes, are never colored Residual. "
-                            "Non-residential buildings have a black ring."
+                            "Each building is colored by the **cheapest measure that brings** "
+                            f"its P90 cumulative damage **to or below {_cut_txt}**, in priority order: "
+                            "**No Damage** \u2192 **Raise Utilities** \u2192 **WFP Basement** \u2192 "
+                            "**Elevation** \u2192 **Residual Damage** (Under-DFE, below BFE, and even "
+                            f"elevation leaves more than {_cut_txt}). Homes at or above BFE, and Above-DFE "
+                            "homes, are never colored Residual. Tick 'Ring non-residential' to mark "
+                            "non-residential buildings with a black ring." + ae_gap_note
                         )
                 elif map_view == "Damage Bins":
                     st.caption(

@@ -36,21 +36,24 @@ Y_NOW = 2025
 
 # Per-location defaults shipped with the app. The Developer module can edit
 # these and add new locations; edits are stored in data/locations.json.
+# "protected": the location's results are shown only after the access password
+# (tribal partner data). The password comes from Streamlit secrets
+# ([access] password) and falls back to the project's long-standing one.
 LOCATION_DEFAULTS = {
     "Shinnecock":  {"name": "Shinnecock", "bfe_ft": 9.0, "elev_min_shortfall_ft": 1.0,
-                    "restrict_manuf": False, "mobile_homes_dominated": False,
+                    "restrict_manuf": False, "mobile_homes_dominated": False, "protected": True,
                     "state": "NY", "blurb": (
                         "The Shinnecock Nation's territory sits on a low peninsula on the south shore of "
                         "Long Island, New York, bounded by Shinnecock Bay. Rising seas, storm surge and "
                         "shoreline erosion expose homes, roads and cultural sites to more frequent flooding.")},
     "MasticBeach": {"name": "Mastic Beach", "bfe_ft": 8.0, "elev_min_shortfall_ft": 0.0,
-                    "restrict_manuf": False, "mobile_homes_dominated": False,
+                    "restrict_manuf": False, "mobile_homes_dominated": False, "protected": False,
                     "state": "NY", "blurb": (
                         "Mastic Beach is a low-lying bayfront community on the south shore of Long Island, "
                         "New York, facing Moriches Bay. Thousands of homes sit within a few feet of the "
                         "tide line, so tidal flooding and storm surge already reach streets and yards.")},
     "Pamunkey":    {"name": "Pamunkey", "bfe_ft": 7.0, "elev_min_shortfall_ft": 0.0,
-                    "restrict_manuf": True, "mobile_homes_dominated": True,
+                    "restrict_manuf": True, "mobile_homes_dominated": True, "protected": True,
                     "state": "VA", "blurb": (
                         "The Pamunkey Indian Reservation sits on a low-lying 1,600-acre peninsula on a bend "
                         "of the Pamunkey River near West Point, Virginia, ringed by river and tidal marsh on "

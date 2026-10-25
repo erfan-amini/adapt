@@ -67,6 +67,7 @@ html, body, [class*="css"], .stMarkdown, .stText, button, input, select, textare
 }
 .block-container { padding-top: 1.1rem; padding-bottom: 2rem; max-width: 1400px; }
 [data-testid="stDecoration"] { display: none; }
+.stAppDeployButton { display: none; }
 h1, h2, h3 { letter-spacing: -0.01em; }
 h2 { font-size: 1.55rem !important; }
 h3 { font-size: 1.25rem !important; }
@@ -178,6 +179,50 @@ section[data-testid="stSidebar"] [data-testid="stPageLink-NavLink"] p { color: #
 [data-testid="stPlotlyChart"] text.xtitle, [data-testid="stPlotlyChart"] text.ytitle,
 [data-testid="stPlotlyChart"] .g-xtitle text, [data-testid="stPlotlyChart"] .g-ytitle text { fill: #000000 !important; }
 [data-testid="stImage"] { margin-top: -0.3rem; margin-bottom: -0.3rem; }
+[data-testid="stForm"] { border: 1px solid %(line)s; border-radius: 14px; padding: 1rem 1rem 0.4rem 1rem; }
+.adapt-card.accent + div [data-testid="stForm"], .adapt-card.accent ~ div [data-testid="stForm"] { margin-top: 0.5rem; }
+
+/* ---- landing page ---- */
+.adapt-hero {
+    position: relative; overflow: hidden; border-radius: 22px; padding: 2.6rem 2.8rem 2.4rem 2.8rem;
+    background: radial-gradient(1200px 500px at 85%% -10%%, rgba(56,189,248,0.35), transparent 60%%),
+                radial-gradient(900px 400px at 0%% 110%%, rgba(20,184,166,0.28), transparent 55%%),
+                linear-gradient(135deg, %(navy)s 0%%, %(navy2)s 100%%);
+    color: #ffffff; box-shadow: 0 18px 50px rgba(15,23,42,0.22); margin-top: 0.4rem;
+}
+.adapt-hero .kicker { font-size: 0.74rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase;
+    color: #7dd3fc; margin-bottom: 0.8rem; }
+.adapt-hero h1 { font-size: 2.45rem; font-weight: 800; line-height: 1.12; margin: 0 0 0.8rem 0; color: #ffffff;
+    letter-spacing: -0.02em; max-width: 820px; }
+.adapt-hero p { font-size: 1.08rem; line-height: 1.6; color: #cbd5e1; margin: 0; max-width: 720px; }
+.adapt-hero .meta { margin-top: 1.4rem; display: flex; gap: 1.6rem; flex-wrap: wrap; font-size: 0.82rem; color: #94a3b8; }
+.adapt-hero .meta b { color: #e2e8f0; font-weight: 600; }
+.adapt-section { font-size: 0.74rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+    color: #64748b; margin: 1.6rem 0 0.6rem 0; }
+.adapt-module {
+    background: #ffffff; border: 1px solid %(line)s; border-radius: 18px; padding: 1.4rem 1.4rem 1.1rem 1.4rem;
+    box-shadow: 0 1px 2px rgba(15,23,42,0.04); transition: transform .15s ease, box-shadow .15s ease;
+    min-height: 356px; margin-bottom: 0.6rem;
+}
+.adapt-module:hover { transform: translateY(-2px); box-shadow: 0 12px 30px rgba(15,23,42,0.10); }
+.adapt-module .icon { width: 46px; height: 46px; border-radius: 12px; display: flex; align-items: center;
+    justify-content: center; font-size: 1.45rem; margin-bottom: 0.9rem; }
+.adapt-module h3 { margin: 0 0 0.2rem 0; font-size: 1.2rem !important; color: #0f172a; }
+.adapt-module .who { font-size: 0.82rem; color: #64748b; margin-bottom: 0.6rem; }
+.adapt-module p { font-size: 0.95rem; color: #334155; line-height: 1.55; margin: 0 0 0.8rem 0; }
+.adapt-module .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.adapt-module .chip { font-size: 0.74rem; font-weight: 600; color: #334155; background: #f1f5f9;
+    border-radius: 999px; padding: 0.22rem 0.6rem; }
+.adapt-lock { display: inline-flex; align-items: center; gap: 6px; font-size: 0.82rem; color: #92400e;
+    background: #fef3c7; border-radius: 999px; padding: 0.3rem 0.7rem; margin-top: 0.3rem; }
+/* page links rendered as buttons on the landing page */
+[class*="st-key-go_"] [data-testid="stPageLink"] a, [class*="st-key-go_"] [data-testid="stPageLink-NavLink"] {
+    display: flex; justify-content: center; align-items: center; width: 100%%; padding: 0.55rem 0.9rem;
+    border-radius: 11px; background: %(navy)s; color: #ffffff !important; font-weight: 600; text-decoration: none;
+    transition: background-color .15s ease;
+}
+[class*="st-key-go_"] [data-testid="stPageLink"] a:hover, [class*="st-key-go_"] [data-testid="stPageLink-NavLink"]:hover { background: %(accent_dark)s; }
+[class*="st-key-go_"] [data-testid="stPageLink"] a p, [class*="st-key-go_"] [data-testid="stPageLink-NavLink"] p { color: #ffffff !important; }
 
 .adapt-footer { text-align: center; padding: 1.3rem 0 0.4rem 0; color: #64748b; font-size: 0.9rem; line-height: 1.55; }
 .adapt-footer .org { font-weight: 600; color: #334155; }
@@ -189,6 +234,19 @@ section[data-testid="stSidebar"] [data-testid="stPageLink-NavLink"] p { color: #
 def inject_css(accent=C.SKY, accent_dark=C.SKY_DARK):
     st.markdown(_CSS % {"navy": C.NAVY, "navy2": C.NAVY_2, "accent": accent,
                         "accent_dark": accent_dark, "line": C.LINE}, unsafe_allow_html=True)
+
+
+def hide_sidebar():
+    """Landing page only: hide the sidebar and its toggle so the page reads as
+    a single clean canvas. Module pages render the sidebar normally."""
+    st.markdown(
+        "<style>"
+        "section[data-testid='stSidebar'], [data-testid='stSidebarCollapsedControl'],"
+        "[data-testid='collapsedControl'] { display: none !important; }"
+        ".block-container { max-width: 1180px; padding-top: 0.6rem; }"
+        "</style>",
+        unsafe_allow_html=True,
+    )
 
 
 def _darken(hex_color, f=0.82):
@@ -250,7 +308,68 @@ def footer():
 
 
 # ---------------------------------------------------------------------------
-# Developer gate
+# Access gate for protected locations
+# ---------------------------------------------------------------------------
+LEGACY_PASSWORD = "NY2026VA"
+
+
+def access_password():
+    """Password that unlocks protected locations: Streamlit secrets
+    ([access] password) or the ACCESS_PASSWORD environment variable, falling
+    back to the project's long-standing password."""
+    try:
+        if secrets_available():
+            if "access" in st.secrets and "password" in st.secrets["access"]:
+                return str(st.secrets["access"]["password"])
+            if "access_password" in st.secrets:
+                return str(st.secrets["access_password"])
+    except Exception:
+        pass
+    return os.environ.get("ACCESS_PASSWORD") or LEGACY_PASSWORD
+
+
+def is_protected(cfg):
+    return bool((cfg or {}).get("protected", False))
+
+
+def location_unlocked(location_name):
+    return location_name in st.session_state.get("unlocked_locations", set())
+
+
+def location_gate(location_name, cfg, compact=False):
+    """Return True when the location may be shown. Otherwise render the
+    password form (a card, or a compact inline version) and return False."""
+    if not is_protected(cfg) or location_unlocked(location_name):
+        return True
+    pw = access_password()
+    form_key = f"gate_{'c' if compact else 'f'}_{slugify(location_name)}"
+    if compact:
+        container = st.container()
+    else:
+        st.markdown("<div style='height:1rem'></div>", unsafe_allow_html=True)
+        _, container, _ = st.columns([1, 1.25, 1])
+    with container:
+        st.markdown(
+            "<div class='adapt-card accent'><div class='icon'>🔒</div>"
+            f"<h3>{_html.escape(str(location_name))} results are password protected</h3>"
+            "<p>Results for this community are shared with its partners. Enter the access "
+            "password to open them, or pick another location.</p></div>",
+            unsafe_allow_html=True,
+        )
+        with st.form(form_key, clear_on_submit=True):
+            entered = st.text_input("Access password", type="password")
+            ok = st.form_submit_button("Unlock", type="primary", use_container_width=True)
+        if ok:
+            if entered == pw:
+                st.session_state.setdefault("unlocked_locations", set()).add(location_name)
+                st.rerun()
+            else:
+                st.error("Incorrect password.")
+    return False
+
+
+# ---------------------------------------------------------------------------
+# Developer gate (optional: only when [developer] password is set in secrets)
 # ---------------------------------------------------------------------------
 def developer_password():
     """Password from .streamlit/secrets.toml ([developer] password = "...") or
@@ -268,15 +387,16 @@ def developer_password():
     env = os.environ.get("DEVELOPER_PASSWORD")
     if env:
         return env, True
-    return "NY2026VA", False
+    return None, False
 
 
 def developer_gate():
-    """Render the password form unless already unlocked. Returns True when the
-    caller may render developer content."""
-    if st.session_state.get("dev_unlocked"):
-        return True
+    """The Developer module is open unless a developer password is configured
+    in secrets (or DEVELOPER_PASSWORD). Returns True when the caller may render
+    developer content."""
     pw, from_secrets = developer_password()
+    if not from_secrets or st.session_state.get("dev_unlocked"):
+        return True
     st.markdown("<div style='height:1.2rem'></div>", unsafe_allow_html=True)
     c1, c2, c3 = st.columns([1, 1.3, 1])
     with c2:
@@ -296,7 +416,4 @@ def developer_gate():
                 st.rerun()
             else:
                 st.error("Incorrect password.")
-        if not from_secrets:
-            st.caption("No developer password is set in Streamlit secrets; the legacy password is in use. "
-                       "Add `[developer] password = \"...\"` to `.streamlit/secrets.toml` to change it.")
     return False

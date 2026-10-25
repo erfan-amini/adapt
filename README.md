@@ -11,7 +11,12 @@ has three modules behind a landing page:
 |---|---|---|
 | Community Members | residents, businesses, property owners | Dynamic maps, My building |
 | Decision Makers | planners, agencies, community leaders | Community overview, Flood maps, Road maps, Damage distributions |
-| Developer (password) | the project team | Data and settings, NSI survey tool, Fragility curves, Run the model |
+| Developer | the project team | Data and settings, NSI survey tool, Fragility curves, Run the model |
+
+Access: locations flagged `protected` in `data/locations.json` (Shinnecock and Pamunkey by
+default) show their results only after the access password, on every module. The
+password is `[access] password` in Streamlit secrets, falling back to the project's
+long-standing password. The Developer module is open unless `[developer] password` is set.
 
 The damage and adaptation model runs inside the app (`adapt_core/engine.py`),
 a validated port of the MATLAB pipeline `AAA___Main_v14.m`. MATLAB is no
@@ -70,9 +75,9 @@ pip install -r requirements.txt
 streamlit run app.py
 ```
 
-Copy `.streamlit/secrets.toml.example` to `.streamlit/secrets.toml` and set the
-developer password and, optionally, a GitHub token so the Developer module can
-publish results. On Streamlit Community Cloud paste the same contents into the
+Copy `.streamlit/secrets.toml.example` to `.streamlit/secrets.toml` to change the
+access password, gate the Developer module, or add a GitHub token so the Developer
+module can publish results. On Streamlit Community Cloud paste the same contents into the
 app's Secrets box.
 
 ## Running the model
