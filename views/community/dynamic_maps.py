@@ -57,170 +57,182 @@ def render(ctx):
     elif df_buildings is not None:
         st.subheader(f"Building Risk Map - {location_name} ({occupancy_label}) - {target_year}, {scenario}")
 
-        # Map View and Basemap on a single line, side by side.
-        _mv_col, _bm_col = st.columns(2)
-        with _mv_col:
-            map_view = st.radio(
-                "Map View",
-                options=["Damage Heatmap", "Damage Bins", "Adaptation Effectiveness", "Flood Occurrences"],
-                horizontal=True,
-                key="map_view_selector",
-                help=(
-                    "**Damage Heatmap**: continuous color by No-Mitigation P50 cumulative damage. "
-                    "**Damage Bins**: discrete bins of upper-tail damage with breakpoints fixed across years. "
-                    "**Adaptation Effectiveness**: classifies each building by which retrofit eliminates upper-tail damage. "
-                    "**Flood Occurrences**: counts how many times each building's first floor floods (MC water level above FFE) "
-                    "from 2025 through the selected horizon, colored by a chosen percentile of the 1,000-realization distribution."
-                ),
-            )
-        with _bm_col:
-            # "Streets" = OpenStreetMap; "Aerial" overlays ESRI World
-            # Imagery. Remembered globally (one key, not per-location).
-            basemap_choice = st.radio(
-                "Basemap",
-                options=["Streets", "Aerial"],
-                horizontal=True,
-                key="map_basemap_choice",
-                help=(
-                    "**Streets**: OpenStreetMap road network and place labels. "
-                    "**Aerial**: satellite imagery (ESRI World Imagery) - useful for "
-                    "spotting individual buildings, parking lots, vegetation, and "
-                    "shoreline detail. Requires internet access at render time; if "
-                    "the tile server is unreachable the map will fall back to a "
-                    "white background."
-                ),
-            )
+        # ---- Map view: one row of segmented buttons -------------------------
+        _VIEW_ICONS = {
+            "Damage Heatmap": "🔥 Damage heatmap",
+            "Damage Bins": "📊 Damage bins",
+            "Adaptation Effectiveness": "🛡️ Adaptation effectiveness",
+            "Flood Occurrences": "🌊 Flood occurrences",
+        }
+        # Fixed default + callback: clicking the active view would deselect it
+        # (value None); the callback puts the last view back. Keeping the
+        # default constant keeps the widget ID stable, so the elements below
+        # (including an open Advanced options panel) are not re-mounted.
+        def _keep_selection(key, last_key, fallback):
+            if ss.get(key) is None:
+                ss[key] = ss.get(last_key, fallback)
+            ss[last_key] = ss[key]
 
-        # Flood Occurrences view - choose which statistic of the
-        # per-building MC occurrence-count distribution drives the map
-        # color (mean / low / median / high). Defaults to the mean
-        # (rounded up). Always defined (defaults to the mean) so
+        with ctx._keyed_container("map_view_row"):
+            _mv = st.segmented_control(
+                "Map view", options=list(_VIEW_ICONS), format_func=lambda v: _VIEW_ICONS[v],
+                default="Damage Heatmap", selection_mode="single",
+                key="map_view_seg", label_visibility="collapsed",
+                on_change=_keep_selection, args=("map_view_seg", "_map_view_last", "Damage Heatmap"),
+                help=(
+                    "**Damage heatmap**: continuous color by No-Mitigation P50 cumulative damage. "
+                    "**Damage bins**: discrete bins of upper-tail damage with breakpoints fixed across years. "
+                    "**Adaptation effectiveness**: classifies each building by the cheapest retrofit that "
+                    "brings its upper-tail damage below the minimal-damage cutoff. "
+                    "**Flood occurrences**: how many times each building's first floor floods from 2025 "
+                    "through the selected horizon."
+                ),
+            )
+        # Clicking the active segment deselects it; keep the last view instead.
+        map_view = _mv or ss.get("_map_view_last", "Damage Heatmap")
+        ss["_map_view_last"] = map_view
+
+        # Flood Occurrences view - which statistic of the per-building MC
+        # occurrence-count distribution drives the color. Always defined so
         # downstream code can reference it regardless of the active view.
         flood_pct_key = 'occ_mean'
-        # Adaptation Effectiveness - what counts as "damage eliminated". The
-        # legacy rule is a flat $1k on the P90 cumulative damage; the other
-        # options let the reader see how the orange/red split depends on it.
+        # A fixed slot (always present, empty outside this view) keeps the
+        # elements below at the same position, so an open Advanced options
+        # panel stays open when the view changes.
+        _fo_slot = ctx._keyed_container("map_fo_row")
+        if map_view == "Flood Occurrences":
+            _FP = {"Mean (average)": 'occ_mean', "P10 (low)": 'occ_P10',
+                   "Median (P50)": 'occ_P50', "P90 (high)": 'occ_P90'}
+            with _fo_slot:
+                _fp_label = st.segmented_control(
+                    "Flood-occurrence statistic (across the 1,000 water-level realizations)",
+                    options=list(_FP), default="Mean (average)",
+                    selection_mode="single", key="flood_occ_seg",
+                    on_change=_keep_selection, args=("flood_occ_seg", "_map_fo_last", "Mean (average)"),
+                    help=(
+                        "For each building we count, in every realization, how many times it floods "
+                        "(annual-max water level above its first-floor elevation) from 2025 through the "
+                        "selected horizon, giving 1,000 counts per building. This picks which statistic "
+                        "of those counts colors the map; the mean is rounded to the nearest whole year."
+                    ),
+                )
+            _fp_label = _fp_label or ss.get("_map_fo_last", "Mean (average)")
+            ss["_map_fo_last"] = _fp_label
+            flood_pct_key = _FP[_fp_label]
+
+        # ---- Advanced options (collapsed) ----------------------------------
+        # Adaptation Effectiveness - what counts as "damage eliminated": the
+        # P90 cumulative damage at or below the cutoff. Default $20k.
         _CUTOFF_OPTIONS = {
-            "$1k (legacy)": 1000.0, "$5k": 5000.0, "$10k": 10000.0, "$25k": 25000.0,
+            "$1k": 1000.0, "$5k": 5000.0, "$10k": 10000.0, "$20k": 20000.0, "$25k": 25000.0,
             "$50k": 50000.0, "$100k": 100000.0,
             "1% of structure value": ("pct", 0.01), "5% of structure value": ("pct", 0.05),
         }
-        cutoff_label = "$1k (legacy)"
+        cutoff_label = "$20k"
         _bfe_default = (loc_entry or {}).get('bfe_ft')
         _bfe_default = float(_bfe_default) if _bfe_default is not None and pd.notna(_bfe_default) else 8.0
         elev_cutoff_ft = _bfe_default
-        if map_view == "Adaptation Effectiveness":
-            _c_cut, _c_elev = st.columns([0.55, 0.45])
-            with _c_cut:
-                cutoff_label = st.selectbox(
-                    "Minimal-damage cutoff (P90 cumulative damage at or below this counts as eliminated)",
-                    list(_CUTOFF_OPTIONS.keys()), index=0, key="map_ae_cutoff",
-                    help="A building is classified by the cheapest measure that brings its 90th-percentile "
-                         "cumulative damage through the target year to or below this cutoff. The cutoff is "
-                         "also the 'no damage' line for the green category.",
-                )
-            with _c_elev:
-                elev_cutoff_ft = st.number_input(
-                    "Elevation eligibility cutoff (first-floor elevation, ft NAVD88)",
-                    value=float(_bfe_default), step=0.5, format="%.1f",
-                    key=f"map_ae_elev_cutoff_{location_name}",
-                    help=f"Buildings whose first floor is at or above this elevation are not considered for "
-                         f"elevation in this view and are never colored Residual. Default = BFE "
-                         f"({_bfe_default:g} ft) = DFE - 2 ft. Set it to the DFE ({_bfe_default + 2:g} ft) to "
-                         f"include every Under-DFE building.",
-                )
-        _cutoff_spec = _CUTOFF_OPTIONS[cutoff_label]
-        if map_view == "Flood Occurrences":
-            _fp_label = st.radio(
-                "Flood-occurrence statistic (across the 1,000 MC water-level realizations)",
-                options=["Mean (average)", "P10 (low)", "Median (P50)", "P90 (high)"],
-                index=0, horizontal=True,
-                key="flood_occ_pct",
-                help=(
-                    "For each building we count, in every MC realization, how many "
-                    "times it floods (annual-max water level above its first-floor "
-                    "elevation) from 2025 through the selected horizon - giving 1,000 "
-                    "occurrence counts per building. This selector picks which "
-                    "statistic of that distribution colors the map. The mean "
-                    "(default) is the average count across the 1,000 realizations, "
-                    "rounded to the nearest whole year."
-                ),
-            )
-            flood_pct_key = {
-                "Mean (average)": 'occ_mean',
-                "P10 (low)":      'occ_P10',
-                "Median (P50)":   'occ_P50',
-                "P90 (high)":     'occ_P90',
-            }[_fp_label]
-
-        # Map data filters + building search + point size, consolidated
-        # onto a SINGLE row so all four map controls sit on one line.
-        # Bound to the same committed keys the pipeline reads, so changes
-        # apply to the map immediately. The building-ID search drops a
-        # temporary highlight ring on the map that auto-expires after a few
-        # seconds (HIGHLIGHT_TTL_SEC) so a clean screenshot can be taken;
-        # "✖ Clear" dismisses it instantly. The checkbox and the Find/Clear
-        # buttons get a small spacer above them so they line up with the
-        # baseline of the labeled widgets on either side.
         HIGHLIGHT_TTL_SEC = 8.0
-        # Pamunkey defaults to 2× point size because its small building
-        # count makes the default markers read as tiny dots at the natural
-        # map zoom; other locations default to 1×. Each location remembers
-        # its own setting via a location-scoped slider key.
+        # Pamunkey defaults to 2x point size (few buildings, small dots at
+        # the natural zoom); each location remembers its own setting.
         _default_scale = 2.0 if location_name == "Pamunkey" else 1.0
-        c_dfe, c_zero, c_ring, c_find, c_btn, c_size = st.columns([2.6, 2.0, 1.9, 2.0, 1.6, 2.0])
-        with c_ring:
-            st.markdown("<div style='height:2.05em'></div>", unsafe_allow_html=True)
-            ring_nonres = st.checkbox(
-                "Ring non-residential", key="map_ring_nonres",
-                help="Draw a black ring around every non-residential building (shops, offices, "
-                     "churches, schools, government and industrial buildings) so they stand out "
-                     "from homes on every map view.",
-            )
-        with c_dfe:
-            if fp_options:
-                ss.w_dfe = ss.cv_dfe
-                st.multiselect("DFE status filter", fp_options, key="w_dfe", on_change=_cb_dfe)
-        with c_zero:
-            st.markdown("<div style='height:2.05em'></div>", unsafe_allow_html=True)
-            ss.w_showzero = ss.cv_showzero
-            st.checkbox("Show buildings with $0 damage", key="w_showzero", on_change=_cb_zero)
-        with c_find:
-            search_id_text = st.text_input(
-                "Find building by ID",
-                value="",
-                key="map_search_bldg_id",
-                placeholder="e.g. 8466717",
-                help=(
-                    "Enter a Building ID and press Enter (or click 🔍). "
-                    f"A magenta ring will flash on that building for "
-                    f"~{int(HIGHLIGHT_TTL_SEC)} seconds, then disappear "
-                    "automatically - no extra marks left on the map for "
-                    "screenshots. Click ✖ to clear immediately."
-                ),
-            )
-        with c_btn:
-            st.markdown("<div style='height:2.05em'></div>", unsafe_allow_html=True)
-            btn_a, btn_b = st.columns(2)
-            with btn_a:
-                find_clicked = st.button("🔍 Find", key="map_search_find",
-                                         use_container_width=True)
-            with btn_b:
-                clear_clicked = st.button("✖ Clear", key="map_search_clear",
-                                          use_container_width=True)
-        with c_size:
-            _point_scale = st.slider(
-                "Point size",
-                min_value=0.5, max_value=4.0,
-                value=_default_scale, step=0.25,
-                format="%.2fx",
-                key=f"map_point_scale_{location_name}",
-                help=(
-                    "Scale all building markers up or down on the map. "
-                    "Useful at locations with few buildings (e.g. Pamunkey) "
-                    "where the default dots look small at the natural zoom."
-                ),
-            )
+
+        # Advanced options: a switch plus a panel. The panel's widgets are
+        # always rendered (hidden with CSS when the switch is off), so their
+        # values persist, and the open/closed state survives view changes.
+        adv_on = st.toggle("⚙️ Advanced options", key="map_adv_toggle")
+        if not adv_on:
+            st.markdown("<style>.st-key-map_adv_box { display: none !important; }</style>", unsafe_allow_html=True)
+        with ctx._keyed_container("map_adv_box"):
+            a1, a2, a3, a4 = st.columns([1.15, 1.25, 1, 1], vertical_alignment="center")
+            with a1:
+                basemap_choice = st.segmented_control(
+                    "Basemap", options=["Streets", "Aerial"], default="Streets",
+                    selection_mode="single", key="map_basemap_seg",
+                    on_change=_keep_selection, args=("map_basemap_seg", "_map_basemap_last", "Streets"),
+                    help="**Streets**: OpenStreetMap roads and place labels. **Aerial**: ESRI World Imagery, "
+                         "useful for spotting individual buildings and shoreline detail.",
+                ) or "Streets"
+            with a2:
+                _point_scale = st.slider(
+                    "Point size", min_value=0.5, max_value=4.0, value=_default_scale, step=0.25,
+                    format="%.2fx", key=f"map_point_scale_{location_name}",
+                    help="Scale all building markers up or down.",
+                )
+            with a3:
+                ring_nonres = st.checkbox(
+                    "Ring non-residential", key="map_ring_nonres",
+                    help="Draw a black ring around every non-residential building (shops, offices, "
+                         "churches, schools, government and industrial buildings) on every map view.",
+                )
+            with a4:
+                ss.w_showzero = ss.cv_showzero
+                st.checkbox("Show buildings with $0 damage", key="w_showzero", on_change=_cb_zero)
+
+            # Always drawn (disabled outside the Adaptation effectiveness view)
+            # so the panel keeps the same layout and stays open across views.
+            _ae = (map_view == "Adaptation Effectiveness")
+            if True:
+                b1, b2 = st.columns([0.55, 0.45])
+                with b1:
+                    cutoff_label = st.selectbox(
+                        "Minimal-damage cutoff (Adaptation effectiveness view)",
+                        list(_CUTOFF_OPTIONS.keys()), index=list(_CUTOFF_OPTIONS).index("$20k"),
+                        key="map_ae_cutoff_v2", disabled=not _ae,
+                        help="P90 cumulative damage at or below this counts as eliminated. A building is "
+                             "classified by the cheapest measure that brings its 90th-percentile cumulative damage "
+                             "through the target year to or below this cutoff; it is also the 'no damage' line for "
+                             "the green category.",
+                    )
+                with b2:
+                    elev_cutoff_ft = st.number_input(
+                        "Elevation eligibility cutoff (first-floor elevation, ft NAVD88)",
+                        value=float(_bfe_default), step=0.5, format="%.1f",
+                        key=f"map_ae_elev_cutoff_{location_name}", disabled=not _ae,
+                        help=f"Buildings whose first floor is at or above this elevation are not considered for "
+                             f"elevation in this view and are never colored Residual. Default = BFE "
+                             f"({_bfe_default:g} ft) = DFE - 2 ft. Set it to the DFE ({_bfe_default + 2:g} ft) to "
+                             f"include every Under-DFE building.",
+                    )
+
+            c1, c2, c3 = st.columns([1.4, 1.2, 0.8], vertical_alignment="bottom")
+            with c1:
+                if fp_options:
+                    ss.w_dfe = ss.cv_dfe
+                    st.multiselect("DFE status filter", fp_options, key="w_dfe", on_change=_cb_dfe)
+            with c2:
+                search_id_text = st.text_input(
+                    "Find building by ID", value="", key="map_search_bldg_id", placeholder="e.g. 8466717",
+                    help=(f"Enter a Building ID and press Find. A magenta ring flashes on that building for "
+                          f"~{int(HIGHLIGHT_TTL_SEC)} seconds, then disappears. Clear removes it at once."),
+                )
+            with c3:
+                btn_a, btn_b = st.columns(2)
+                with btn_a:
+                    find_clicked = st.button("🔍 Find", key="map_search_find", use_container_width=True)
+                with btn_b:
+                    clear_clicked = st.button("✖ Clear", key="map_search_clear", use_container_width=True)
+        _cutoff_spec = _CUTOFF_OPTIONS[cutoff_label]
+
+        # Map-view row styling: full-width segmented buttons.
+        st.markdown(
+            "<style>"
+            ".st-key-map_adv_box { border: 1px solid #e2e8f0; border-radius: 14px; padding: 0.9rem 1.1rem 0.4rem 1.1rem; "
+            "  background: #f8fafc; }"
+            ".st-key-map_view_row [data-testid='stButtonGroup'] { width: 100% !important; }"
+            # Streamlit sizes these buttons to their text, so a grid (not flex) is
+            # what makes the four views share the full row equally.
+            ".st-key-map_view_row [data-testid='stButtonGroup'] > div { display: grid !important; width: 100% !important; "
+            "  max-width: none !important; "
+            "  grid-template-columns: repeat(4, minmax(max-content, 1fr)) !important; }"
+            ".st-key-map_view_row [data-testid='stButtonGroup'] button { width: auto !important; max-width: none !important; "
+            "  justify-content: center; padding: 0.7rem 1rem; min-height: 3rem; }"
+            ".st-key-map_view_row [data-testid='stButtonGroup'] button p { font-size: 0.98rem; font-weight: 600; }"
+            ".st-key-map_view_row [data-testid='stButtonGroup'] button:first-child { border-radius: 12px 0 0 12px; }"
+            ".st-key-map_view_row [data-testid='stButtonGroup'] button:last-child { border-radius: 0 12px 12px 0; }"
+            "</style>",
+            unsafe_allow_html=True,
+        )
 
         # Resolve the click → session-state interaction
         import time as _time_mod
@@ -1443,7 +1455,7 @@ def render(ctx):
                         "damage." + cap_note
                     )
                 elif map_view == "Adaptation Effectiveness":
-                    _cut_txt = cutoff_label.replace(" (legacy)", "")
+                    _cut_txt = cutoff_label.replace("$", "\\$")   # escape $ so markdown does not start math mode
                     if mobile_raise_only:
                         st.caption(
                             "🏠 **Mobile-homes-dominated area:** only **raising (elevating) homes** "
