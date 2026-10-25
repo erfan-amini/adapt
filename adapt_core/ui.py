@@ -119,6 +119,13 @@ section[data-testid="stSidebar"] [data-testid="stPageLink-NavLink"] p { color: #
 .adapt-brand { display: flex; flex-direction: column; gap: 2px; padding: 0 0.2rem 0.6rem 0.2rem; }
 .adapt-brand .word { font-size: 1.55rem; font-weight: 800; color: #38bdf8; letter-spacing: 0.5px; line-height: 1; }
 .adapt-brand .sub { font-size: 0.66rem; color: #cbd5e1; font-weight: 500; line-height: 1.3; }
+.adapt-brand-row { display: flex; align-items: center; gap: 0.75rem; padding: 0.1rem 0.15rem 0.9rem 0.15rem;
+    margin-bottom: 0.4rem; border-bottom: 1px solid rgba(148,163,184,0.22); }
+.adapt-brand-row .tile { width: 54px; height: 54px; flex: 0 0 54px; border-radius: 14px; background: #ffffff;
+    display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 14px rgba(0,0,0,0.25); }
+.adapt-brand-row .tile img { width: 42px; height: 42px; object-fit: contain; }
+.adapt-brand-row .word { font-size: 1.45rem; font-weight: 800; letter-spacing: 0.06em; color: #ffffff !important; line-height: 1; }
+.adapt-brand-row .sub { font-size: 0.66rem; color: #94a3b8 !important; line-height: 1.3; margin-top: 4px; }
 .adapt-module-tag {
     display: inline-flex; align-items: center; gap: 6px; margin: 0.4rem 0 0.4rem 0;
     padding: 0.28rem 0.6rem; border-radius: 999px; font-size: 0.72rem; font-weight: 700;
@@ -238,6 +245,41 @@ section[data-testid="stSidebar"] [data-testid="stPageLink-NavLink"] p { color: #
 def inject_css(accent=C.SKY, accent_dark=C.SKY_DARK):
     st.markdown(_CSS % {"navy": C.NAVY, "navy2": C.NAVY_2, "accent": accent,
                         "accent_dark": accent_dark, "line": C.LINE}, unsafe_allow_html=True)
+
+
+@st.cache_data(show_spinner=False)
+def image_data_uri(path, mtime, max_px=480):
+    """PNG data URI of an image, downscaled so the page stays light. `mtime`
+    is only part of the cache key, so a replaced file is picked up."""
+    import base64
+    import io
+    from PIL import Image
+    im = Image.open(path).convert("RGBA")
+    im.thumbnail((max_px, max_px), Image.LANCZOS)
+    bbox = im.getbbox()
+    if bbox:
+        im = im.crop(bbox)
+    buf = io.BytesIO()
+    im.save(buf, format="PNG", optimize=True)
+    return "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode("ascii")
+
+
+def first_existing(paths):
+    return next((p for p in paths if os.path.exists(p)), None)
+
+
+def sidebar_brand():
+    """Sidebar header: the ADAPT mark on a light tile, with the name beside it."""
+    mark = ""
+    if os.path.exists(C.LOGO_PATH):
+        mark = f"<img src='{image_data_uri(C.LOGO_PATH, os.path.getmtime(C.LOGO_PATH), 160)}' alt=''/>"
+    st.markdown(
+        "<div class='adapt-brand-row'>"
+        f"<div class='tile'>{mark}</div>"
+        "<div class='txt'><div class='word'>ADAPT</div>"
+        "<div class='sub'>Assessment of Damage and Adaptation Planning Tool</div></div></div>",
+        unsafe_allow_html=True,
+    )
 
 
 def hide_sidebar():

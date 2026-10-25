@@ -8,7 +8,9 @@ APP_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_DIR = os.path.join(APP_ROOT, "data")
 CURVES_DIR = os.path.join(DATA_DIR, "_curves")
 ASSETS_DIR = os.path.join(APP_ROOT, "assets")
-LOGO_PATH = os.path.join(ASSETS_DIR, "logo.png")
+LOGO_PATH = os.path.join(ASSETS_DIR, "logo.png")        # mark only (sidebar)
+LOGO_FULL_CANDIDATES = [os.path.join(ASSETS_DIR, "logo_full.png"),
+                        os.path.join(APP_ROOT, "logo.png")]   # mark + wordmark (home page)
 NSI_TOOL_HTML = os.path.join(ASSETS_DIR, "nsi_tool.html")
 LOCATIONS_FILE = os.path.join(DATA_DIR, "locations.json")
 

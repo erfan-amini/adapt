@@ -1,5 +1,4 @@
 """Landing page: one screen. A hero with the ADAPT mark, the community, three doors."""
-import base64
 import html as _html
 import os
 
@@ -15,13 +14,6 @@ _WHO = {
     "planners": "Planners, agencies and community leaders",
     "developer": "The project team",
 }
-_LOGO_MARK = os.path.join(C.ASSETS_DIR, "logo_mark_560.png")
-
-
-@st.cache_data(show_spinner=False)
-def _logo_data_uri(path, mtime):
-    with open(path, "rb") as fh:
-        return "data:image/png;base64," + base64.b64encode(fh.read()).decode("ascii")
 
 
 def _site_line(ctx):
@@ -47,8 +39,9 @@ def _site_line(ctx):
 def render(ctx):
     ss = ctx.ss
     art = ""
-    if os.path.exists(_LOGO_MARK):
-        art = f"<img src='{_logo_data_uri(_LOGO_MARK, os.path.getmtime(_LOGO_MARK))}' alt='ADAPT'/>"
+    logo = ui.first_existing(C.LOGO_FULL_CANDIDATES)
+    if logo:
+        art = f"<img src='{ui.image_data_uri(logo, os.path.getmtime(logo), 520)}' alt='ADAPT'/>"
     st.markdown(
         "<div class='adapt-hero light'><div class='hero-text'>"
         "<div class='kicker'>Assessment of Damage and Adaptation Planning Tool</div>"
