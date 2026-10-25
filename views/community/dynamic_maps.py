@@ -106,14 +106,29 @@ def render(ctx):
             "1% of structure value": ("pct", 0.01), "5% of structure value": ("pct", 0.05),
         }
         cutoff_label = "$1k (legacy)"
+        _bfe_default = (loc_entry or {}).get('bfe_ft')
+        _bfe_default = float(_bfe_default) if _bfe_default is not None and pd.notna(_bfe_default) else 8.0
+        elev_cutoff_ft = _bfe_default
         if map_view == "Adaptation Effectiveness":
-            cutoff_label = st.selectbox(
-                "Minimal-damage cutoff (P90 cumulative damage at or below this counts as eliminated)",
-                list(_CUTOFF_OPTIONS.keys()), index=0, key="map_ae_cutoff",
-                help="A building is classified by the cheapest measure that brings its 90th-percentile "
-                     "cumulative damage through the target year to or below this cutoff. The cutoff is "
-                     "also the 'no damage' line for the green category.",
-            )
+            _c_cut, _c_elev = st.columns([0.55, 0.45])
+            with _c_cut:
+                cutoff_label = st.selectbox(
+                    "Minimal-damage cutoff (P90 cumulative damage at or below this counts as eliminated)",
+                    list(_CUTOFF_OPTIONS.keys()), index=0, key="map_ae_cutoff",
+                    help="A building is classified by the cheapest measure that brings its 90th-percentile "
+                         "cumulative damage through the target year to or below this cutoff. The cutoff is "
+                         "also the 'no damage' line for the green category.",
+                )
+            with _c_elev:
+                elev_cutoff_ft = st.number_input(
+                    "Elevation eligibility cutoff (first-floor elevation, ft NAVD88)",
+                    value=float(_bfe_default), step=0.5, format="%.1f",
+                    key=f"map_ae_elev_cutoff_{location_name}",
+                    help=f"Buildings whose first floor is at or above this elevation are not considered for "
+                         f"elevation in this view and are never colored Residual. Default = BFE "
+                         f"({_bfe_default:g} ft) = DFE - 2 ft. Set it to the DFE ({_bfe_default + 2:g} ft) to "
+                         f"include every Under-DFE building.",
+                )
         _cutoff_spec = _CUTOFF_OPTIONS[cutoff_label]
         if map_view == "Flood Occurrences":
             _fp_label = st.radio(
@@ -848,7 +863,7 @@ def render(ctx):
                         # BELOW BFE stay eligible for Residual; a missing
                         # FFE or BFE leaves a building eligible (we don't have
                         # grounds to exclude it). NaN FFE compares False here.
-                        _bfe_val = (loc_entry or {}).get('bfe_ft')
+                        _bfe_val = elev_cutoff_ft          # adjustable; default = BFE = DFE - 2
                         if 'FFE_ft' in df_map.columns and _bfe_val is not None and pd.notna(_bfe_val):
                             _ffe_vals = pd.to_numeric(df_map['FFE_ft'], errors='coerce').values.astype(float)
                             is_above_bfe = _ffe_vals >= float(_bfe_val)
@@ -875,13 +890,21 @@ def render(ctx):
                         # this view. Say so, with the count, instead of leaving
                         # silent holes on the map.
                         _elev_missing = np.isnan(elev_raw) | (elev_raw == no_mit_raw)
-                        _n_gap = int(((cat == 6) & is_under_dfe & is_above_bfe & (no_mit > thr) & _elev_missing).sum())
-                        ae_gap_note = (
-                            f" **{_n_gap:,} damaged buildings with first floors between the BFE and the DFE are "
-                            "not drawn**: the current results carry no elevation estimate for them (older "
-                            "elevation rule). Re-running the model in the Developer module includes them."
-                            if _n_gap > 0 else ""
-                        )
+                        _undrawn = (cat == 6) & is_under_dfe & (no_mit > thr)
+                        _n_gap = int(_undrawn.sum())
+                        _n_noelev = int((_undrawn & _elev_missing).sum())
+                        ae_gap_note = ""
+                        if _n_gap > 0:
+                            ae_gap_note = (
+                                f" **{_n_gap:,} damaged Under-DFE buildings are not drawn**: their first floor is at or "
+                                f"above the elevation eligibility cutoff ({float(elev_cutoff_ft):g} ft) and no cheaper "
+                                "measure eliminates their damage."
+                            )
+                            if _n_noelev > 0:
+                                ae_gap_note += (
+                                    f" {_n_noelev:,} of them also have no elevation estimate in the current results "
+                                    "(older elevation rule); re-running the model in the Developer module adds one."
+                                )
 
                         # Legend counts - each building appears in exactly
                         # one bucket, so these add up to (buildings shown).

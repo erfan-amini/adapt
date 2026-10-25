@@ -197,13 +197,25 @@ section[data-testid="stSidebar"] [data-testid="stPageLink-NavLink"] p { color: #
 .adapt-hero p { font-size: 1.08rem; line-height: 1.6; color: #cbd5e1; margin: 0; max-width: 720px; }
 .adapt-hero .meta { margin-top: 1.4rem; display: flex; gap: 1.6rem; flex-wrap: wrap; font-size: 0.82rem; color: #94a3b8; }
 .adapt-hero .meta b { color: #e2e8f0; font-weight: 600; }
+.adapt-hero.compact { display: flex; align-items: center; gap: 2rem; padding: 1.7rem 2.3rem 1.6rem 2.3rem;
+    border-radius: 20px; margin-top: 0.2rem; }
+.adapt-hero.compact .hero-text { flex: 1 1 60%%; min-width: 0; }
+.adapt-hero.compact .hero-art { flex: 0 0 36%%; max-width: 420px; }
+.adapt-hero.compact .hero-art svg { width: 100%%; height: auto; display: block; }
+.adapt-hero.compact h1 { font-size: 2.05rem; margin-bottom: 0.55rem; }
+.adapt-hero.compact p { font-size: 1.02rem; }
+.adapt-hero.compact .kicker { margin-bottom: 0.55rem; }
+.adapt-siteline { font-size: 0.95rem; color: #475569; padding-bottom: 0.55rem; }
+.adapt-siteline b { color: #0f172a; font-weight: 700; }
 .adapt-section { font-size: 0.74rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
     color: #64748b; margin: 1.6rem 0 0.6rem 0; }
 .adapt-module {
-    background: #ffffff; border: 1px solid %(line)s; border-radius: 18px; padding: 1.4rem 1.4rem 1.1rem 1.4rem;
+    background: #ffffff; border: 1px solid %(line)s; border-radius: 18px; padding: 1.15rem 1.2rem 1.0rem 1.2rem;
     box-shadow: 0 1px 2px rgba(15,23,42,0.04); transition: transform .15s ease, box-shadow .15s ease;
-    min-height: 356px; margin-bottom: 0.6rem;
+    min-height: 196px; margin: 0.3rem 0 0.55rem 0;
 }
+.adapt-module .top { display: flex; align-items: center; gap: 0.85rem; margin-bottom: 0.8rem; }
+.adapt-module .top .icon { margin-bottom: 0; flex: 0 0 auto; }
 .adapt-module:hover { transform: translateY(-2px); box-shadow: 0 12px 30px rgba(15,23,42,0.10); }
 .adapt-module .icon { width: 46px; height: 46px; border-radius: 12px; display: flex; align-items: center;
     justify-content: center; font-size: 1.45rem; margin-bottom: 0.9rem; }
@@ -243,7 +255,10 @@ def hide_sidebar():
         "<style>"
         "section[data-testid='stSidebar'], [data-testid='stSidebarCollapsedControl'],"
         "[data-testid='collapsedControl'] { display: none !important; }"
-        ".block-container { max-width: 1180px; padding-top: 0.6rem; }"
+        ".block-container { max-width: 1240px; padding-top: 0.4rem; padding-bottom: 0.6rem; }"
+        ".adapt-footer { padding: 0.5rem 0 0 0; font-size: 0.8rem; line-height: 1.4; }"
+        ".adapt-footer div { display: inline; margin: 0 0.45rem; }"
+        "hr { margin: 0.6rem 0 0.2rem 0 !important; }"
         "</style>",
         unsafe_allow_html=True,
     )
