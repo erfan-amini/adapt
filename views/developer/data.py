@@ -227,7 +227,7 @@ def render(ctx):
                 else:
                     reg[s_] = {"name": new_name.strip(), "bfe_ft": float(new_bfe),
                                "elev_min_shortfall_ft": float(new_short), "restrict_manuf": False,
-                               "mobile_homes_dominated": False, "state": "", "blurb": ""}
+                               "mobile_homes_dominated": False, "protected": False, "state": "", "blurb": ""}
                     ui.save_location_registry(reg)
                     os.makedirs(bundle_folder_for_slug(s_), exist_ok=True)
                     st.success(f"Created {new_name} ({s_}). Upload its inventory and water levels below.")
@@ -246,20 +246,24 @@ def render(ctx):
                                help="Elevation is offered only when FFE < DFE - shortfall. 0 = any building under "
                                     "the DFE; 1 = buildings within 1 ft of the DFE are not advised to elevate.")
         state = d.text_input("State", value=cfg.get("state", ""))
-        e, f = st.columns(2)
+        e, f, g = st.columns(3)
         mobile = e.checkbox("Mobile-homes-dominated area (default for the pages' toggle)",
                             value=bool(cfg.get("mobile_homes_dominated", False)))
         restrict = f.checkbox("Listed in RESTRICT_MANUF_LOCATIONS (reporting flag only)",
                               value=bool(cfg.get("restrict_manuf", False)),
                               help="Since v12 the RES2/RES4 retrofit restriction is occupancy-driven everywhere; "
                                    "this flag is written to the metadata for transparency.")
+        protected = g.checkbox("Password protected (results shown only after the access password)",
+                               value=bool(cfg.get("protected", False)),
+                               help="The access password comes from Streamlit secrets ([access] password) and "
+                                    "falls back to the project's long-standing password.")
         blurb = st.text_area("Short description shown on the Home and Overview pages", value=cfg.get("blurb", ""),
                              height=90)
         saved = st.form_submit_button("Save settings", type="primary")
     if saved:
         reg[slug] = {**cfg, "name": name.strip() or slug, "bfe_ft": float(bfe), "elev_min_shortfall_ft": float(short),
                      "state": state.strip(), "mobile_homes_dominated": bool(mobile), "restrict_manuf": bool(restrict),
-                     "blurb": blurb.strip()}
+                     "protected": bool(protected), "blurb": blurb.strip()}
         ui.save_location_registry(reg)
         st.success("Settings saved to data/locations.json. They apply to the next model run.")
 
