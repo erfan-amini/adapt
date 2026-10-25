@@ -3,8 +3,8 @@ ADAPT - Assessment of Damage and Adaptation Planning Tool
 Center for Climate Systems Research, The Climate School, Columbia University
 
 Entry point. Three audience modules behind a landing page:
-    Community Members  - dynamic maps, my building
-    Decision Makers    - community overview, flood maps, road maps, damage distributions
+    Households and Businesses - dynamic maps, my building
+    Community Planning        - community overview, flood maps, road maps, damage distributions
     Developer          - data and settings, NSI survey tool, fragility curves, run the model
 """
 import os
