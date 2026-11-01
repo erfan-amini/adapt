@@ -103,13 +103,7 @@ def render(ctx):
     cfg = ui.location_cfg(ctx.registry, ctx.selected_location) or {}
     attrs = loc_entry.get("bldg_attrs")
 
-    ui.page_header(
-        "My home",
-        "Type your address and get a report for your home: how deep the water is expected to get, the flood "
-        "damage you can expect through 2040 and 2055, and how much of it each adaptation action avoids. "
-        "The report covers one home at a time; nothing else is shown.",
-        module_key="community", location=location_name,
-    )
+    ui.page_header("My home", None, module_key="community", location=location_name)
     st.markdown(
         "<style>"
         ".adapt-report-card { background:#ffffff; border:1px solid #e2e8f0; border-radius:16px; padding:1.1rem 1.3rem; "
