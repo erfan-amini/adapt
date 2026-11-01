@@ -175,5 +175,16 @@ precision).
 - What does "times flooded" mean? The number of years, from 2025 through the
   horizon, in which the annual maximum water level reaches the first floor,
   averaged over the 1,000 futures.
+- Why is the share of buildings with damage so similar under median and
+  high sea-level rise, while the dollar damage differs more? Whether a
+  building sees any damage is a threshold question: does the water ever
+  reach its first floor. The two scenarios differ by only about 1 inch of
+  rise by 2040 and 6 inches by 2055, so only buildings whose first floor
+  sits inside that band change from dry to damaged (at Mastic Beach about
+  200 buildings in 2040 and 380 in 2055 out of 6,368; the share with
+  expected damage is 37% versus 37% in 2040 and 42% versus 43% in 2055).
+  Dollar damage differs more (10% in 2040, 16% in 2055) because buildings
+  that already flood take deeper water. By 2100 the scenarios differ by
+  27 inches and the shares separate (53% versus 62%).
 - Who do I contact? Erfan Amini, ea3246@columbia.edu, for corrections to a
   building or questions about the numbers.
