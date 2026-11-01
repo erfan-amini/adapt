@@ -29,6 +29,7 @@ ACTION_LABELS = {
 SCENARIOS = ["P50", "P90"]
 SCENARIO_LABELS = ["50th-percentile", "90th-percentile"]
 SCENARIO_PRETTY = {"50th-percentile": "Median SLR (50th pct)", "90th-percentile": "High-End SLR (90th pct)"}
+SCENARIO_SHORT = {"50th-percentile": "Median SLR", "90th-percentile": "High-End SLR"}   # sidebar grid
 TARGET_YEARS_DEFAULT = [2025, 2040, 2055, 2060, 2100]
 PERCENTILES = [*range(1, 11), 25, 50, 75, *range(90, 100)]
 FLOOD_ZONE_DEFAULT = "A"

@@ -197,21 +197,34 @@ def build_context(data_store, available_locations, registry):
     def _scn_fmt(x):
         return C.SCENARIO_PRETTY.get(x, x)
 
-    def render_sidebar_settings(items=("occ", "year", "scn")):
-        """The same settings, stacked under the location picker in the sidebar."""
-        for name in items:
-            if name == "occ":
+    def _occ_fmt_short(x):
+        # No emoji in the value: the half-width box has room for the words only.
+        return ("All buildings" if x == "All"
+                else "Residential" if x == "Residential"
+                else "Non-residential")
+
+    def _scn_fmt_short(x):
+        return C.SCENARIO_SHORT.get(x, _scn_fmt(x))
+
+    def render_sidebar_settings(slots):
+        """The same settings in the sidebar grid: `slots` maps "occ", "year"
+        and "scn" to the half-width containers made in app._sidebar. Labels
+        are shortened so each value fits a half-width box."""
+        if "occ" in slots:
+            with slots["occ"]:
                 ss.w_occ = ss.cv_occ
                 st.selectbox("\U0001f3e0 Occupancy", ["All", "Residential", "Non-Residential"],
-                             key="w_occ", on_change=_cb_occ, format_func=_occ_fmt)
-            elif name == "year":
+                             key="w_occ", on_change=_cb_occ, format_func=_occ_fmt_short)
+        if "year" in slots:
+            with slots["year"]:
                 ss.w_year = ss.cv_year
                 st.selectbox("\U0001f4c5 Target year", available_years,
                              key="w_year", on_change=_cb_year, format_func=_format_target_year)
-            elif name == "scn":
+        if "scn" in slots:
+            with slots["scn"]:
                 ss.w_scn = ss.cv_scn
                 st.selectbox("\U0001f30a SLR scenario", available_scenarios,
-                             key="w_scn", on_change=_cb_scn, format_func=_scn_fmt)
+                             key="w_scn", on_change=_cb_scn, format_func=_scn_fmt_short)
 
     def render_inline_settings(items):
         # When the module keeps these settings in the sidebar, the pages'

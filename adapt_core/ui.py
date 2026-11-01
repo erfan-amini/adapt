@@ -96,6 +96,21 @@ section[data-testid="stSidebar"] .stSelectbox > div > div {
 }
 section[data-testid="stSidebar"] .stSelectbox svg { fill: #cbd5e1; }
 section[data-testid="stSidebar"] hr { border-color: rgba(148,163,184,0.22); margin: 0.8rem 0; }
+/* Community Planning: location / occupancy / year / scenario in a compact 2 x 2 grid */
+section[data-testid="stSidebar"] .st-key-side_grid [data-testid="stHorizontalBlock"] { gap: 0.5rem; }
+section[data-testid="stSidebar"] .st-key-side_grid [data-testid="stColumn"] { min-width: 0 !important; }
+section[data-testid="stSidebar"] .st-key-side_grid .stSelectbox label p {
+    font-size: 0.64rem !important; letter-spacing: 0.04em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+section[data-testid="stSidebar"] .st-key-side_grid .stSelectbox label { margin-bottom: 1px; min-height: 0 !important; }
+section[data-testid="stSidebar"] .st-key-side_grid .stSelectbox > div > div { min-height: 32px; }
+section[data-testid="stSidebar"] .st-key-side_grid .stSelectbox [data-baseweb="select"] > div { height: 32px; min-height: 32px; padding: 0; }
+section[data-testid="stSidebar"] .st-key-side_grid .stSelectbox [data-baseweb="select"] > div > div:first-child { padding: 0 0 0 0.45rem; height: 30px; line-height: 30px; }
+section[data-testid="stSidebar"] .st-key-side_grid .stSelectbox [data-baseweb="select"] > div > div:last-child { padding-right: 0.15rem; }
+section[data-testid="stSidebar"] .st-key-side_grid .stSelectbox [data-baseweb="select"] input { height: 30px; }
+section[data-testid="stSidebar"] .st-key-side_grid .stSelectbox [data-baseweb="select"] * { font-size: 0.8rem !important; }
+section[data-testid="stSidebar"] .st-key-side_grid .stSelectbox [data-baseweb="select"] svg { width: 18px; height: 18px; }
+section[data-testid="stSidebar"] .st-key-side_grid { gap: 0.45rem !important; margin-bottom: 0.35rem; }
 
 /* page links in the sidebar */
 section[data-testid="stSidebar"] [data-testid="stPageLink"] a,
