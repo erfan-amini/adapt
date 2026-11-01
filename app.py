@@ -71,12 +71,16 @@ def _sidebar(module, available_locations, registry):
         ui.sidebar_brand(ST_PAGES["home"])      # the logo and name link to the landing page
         if available_locations:
             X.location_selector(available_locations, registry, key="w_location_side")
+        # Community Planning keeps the occupancy / year / scenario settings
+        # here, under the location; the slot is filled once the data is loaded.
+        settings_slot = st.container(key="side_settings")
         m = C.MODULES[module]
         st.markdown(f"<div class='adapt-module-tag'>{m['icon']} {m['title']}</div>", unsafe_allow_html=True)
         for key in MODULE_PAGE_KEYS[module]:
             p = next(p for p in PAGES if p[0] == key)
             st.page_link(ST_PAGES[key], label=p[2], icon=p[3])
         st.divider()
+    return settings_slot
 
 
 def _sidebar_tail(module, ctx, title):
@@ -114,13 +118,20 @@ def _run_page(key, module, title, fn):
 
     if module is None:                       # landing page: no sidebar
         ui.hide_sidebar()
+        st.session_state["_settings_in_sidebar"] = False
+        # Coming back to the landing page locks the protected communities
+        # again, so entering one always asks for the password.
+        if st.session_state.pop("_visited_module", False):
+            st.session_state["unlocked_locations"] = set()
         ctx = X.build_context(data_store, available_locations, registry)
         ctx.pages, ctx.module, ctx.page_key, ctx.first_page = ST_PAGES, None, key, FIRST_PAGE
         fn(ctx)
         ui.footer()
         return
 
-    _sidebar(module, available_locations, registry)
+    settings_slot = _sidebar(module, available_locations, registry)
+    st.session_state["_settings_in_sidebar"] = (module == "planners")
+    st.session_state["_visited_module"] = True      # the landing page re-locks protected communities
 
     # Protected locations (tribal partner data) need the access password on
     # every module. The Developer module is open unless a developer password
@@ -137,6 +148,9 @@ def _run_page(key, module, title, fn):
 
     ctx = X.build_context(data_store, available_locations, registry)
     ctx.pages, ctx.module, ctx.page_key, ctx.first_page = ST_PAGES, module, key, FIRST_PAGE
+    if module == "planners":
+        with settings_slot:
+            ctx.render_sidebar_settings()
     _sidebar_tail(module, ctx, title)
     fn(ctx)
     ui.footer()

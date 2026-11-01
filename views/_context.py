@@ -197,7 +197,27 @@ def build_context(data_store, available_locations, registry):
     def _scn_fmt(x):
         return C.SCENARIO_PRETTY.get(x, x)
 
+    def render_sidebar_settings(items=("occ", "year", "scn")):
+        """The same settings, stacked under the location picker in the sidebar."""
+        for name in items:
+            if name == "occ":
+                ss.w_occ = ss.cv_occ
+                st.selectbox("\U0001f3e0 Occupancy", ["All", "Residential", "Non-Residential"],
+                             key="w_occ", on_change=_cb_occ, format_func=_occ_fmt)
+            elif name == "year":
+                ss.w_year = ss.cv_year
+                st.selectbox("\U0001f4c5 Target year", available_years,
+                             key="w_year", on_change=_cb_year, format_func=_format_target_year)
+            elif name == "scn":
+                ss.w_scn = ss.cv_scn
+                st.selectbox("\U0001f30a SLR scenario", available_scenarios,
+                             key="w_scn", on_change=_cb_scn, format_func=_scn_fmt)
+
     def render_inline_settings(items):
+        # When the module keeps these settings in the sidebar, the pages'
+        # inline row is skipped (the sidebar widgets drive the same cv_* state).
+        if ss.get("_settings_in_sidebar"):
+            items = [i for i in items if i not in ("occ", "year", "scn")]
         items = [i for i in items if (i != "dfe" or fp_options)]
         if not items:
             return
@@ -245,6 +265,7 @@ def build_context(data_store, available_locations, registry):
         mobile_raise_only=mobile_raise_only, _restrict_to_raise_only=_restrict_to_raise_only,
         _RAISE_ONLY_ACTIONS=_RAISE_ONLY_ACTIONS, _format_target_year=_format_target_year,
         _scn_fmt=_scn_fmt, _occ_fmt=_occ_fmt, render_inline_settings=render_inline_settings,
+        render_sidebar_settings=render_sidebar_settings,
         _keyed_container=_keyed_container, target_year_labels=target_year_labels,
         BASELINE_YEAR_TO_DROP=BASELINE_YEAR_TO_DROP, render_fragility_curves=render_fragility_curves,
         _location_blurb=_location_blurb, _cb_dfe=_cb_dfe, _cb_zero=_cb_zero,
