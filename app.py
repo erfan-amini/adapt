@@ -87,14 +87,16 @@ def _sidebar_tail(module, ctx, title):
     from adapt_core import assistant
     with st.sidebar:
         assistant.sidebar_panel(module, ctx, title)
-        others = [k for k in C.MODULES if k != module and k != "developer"]
-        if others:
-            st.markdown("<div class='adapt-side-note'>Switch to</div>", unsafe_allow_html=True)
-            for k in others:
-                st.page_link(ST_PAGES[FIRST_PAGE[k]], label=C.MODULES[k]["title"], icon=C.MODULES[k]["icon"])
-            st.divider()
         st.markdown("<div class='adapt-side-note'>Center for Climate Systems Research<br>"
                     "The Climate School, Columbia University</div>", unsafe_allow_html=True)
+        others = [k for k in C.MODULES if k != module and k != "developer"]
+        if others:
+            # Pinned to the bottom of the sidebar (see .st-key-side_switch in ui.py).
+            with st.container(key="side_switch"):
+                st.divider()
+                st.markdown("<div class='adapt-side-note'>Switch to</div>", unsafe_allow_html=True)
+                for k in others:
+                    st.page_link(ST_PAGES[FIRST_PAGE[k]], label=C.MODULES[k]["title"], icon=C.MODULES[k]["icon"])
 
 
 # ---------------------------------------------------------------------------

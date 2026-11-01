@@ -16,7 +16,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
-from adapt_core.terrain import (WS_BINS_FT, WS_COLORS_BLUE, _cached_dem_roi, _cached_local_roads,
+from adapt_core.terrain import (WS_BINS_FT, WS_COLORS, WS_COLORS_BLUE, _cached_dem_roi, _cached_local_roads,
                                 _cached_osm_roads, _ROAD_STYLES, fdem)
 
 # Present-day flood levels offered in the view: settings key, short label, help
@@ -99,12 +99,18 @@ def terrain(bbox_r, res_m):
 
 
 @st.cache_data(show_spinner=False, max_entries=24)
-def depth_layer(bbox_r, res_m, wl_ft, opacity=0.78):
-    """Mapbox image layer of the bathtub depth at `wl_ft` (blue ramp, dry transparent)."""
+def depth_layer(bbox_r, res_m, wl_ft, palette="flood", opacity=1.0):
+    """Mapbox image layer of the bathtub depth at `wl_ft` (dry transparent).
+    palette "flood": the multi-hue ramp of the original flood maps (purple,
+    blue, cyan, yellow, orange, red for 0-1 ... 5+ ft) at the same opacity;
+    "blue": the blue ramp of the road maps."""
     from PIL import Image
     Zm, ext = _cached_dem_roi(bbox_r, res_m)
     depth = fdem.bathtub_depth_ft(Zm, wl_ft, mask_water=True)
-    rgba = fdem.depth_to_rgba(depth, alpha=230, colors=WS_COLORS_BLUE)
+    if palette == "flood":
+        rgba = fdem.depth_to_rgba(depth, alpha=150, colors=WS_COLORS)
+    else:
+        rgba = fdem.depth_to_rgba(depth, alpha=150, colors=WS_COLORS_BLUE)
     buf = io.BytesIO()
     Image.fromarray(rgba, "RGBA").save(buf, format="PNG", optimize=True)
     uri = "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode("ascii")
@@ -118,14 +124,15 @@ def depth_layer(bbox_r, res_m, wl_ft, opacity=0.78):
     return layer, flooded_km2, ext
 
 
-def add_depth_legend(fig):
-    """Legend-only entries for the depth bins."""
-    labels = ["0 to 1 ft", "1 to 2 ft", "2 to 3 ft", "3 to 4 ft", "4 to 5 ft", "5 ft and more"]
-    for (r, g, b), lab in zip(WS_COLORS_BLUE, labels):
+def add_depth_legend(fig, palette="flood"):
+    """Legend-only entries for the depth bins, labelled as on the original flood maps."""
+    labels = ["0–1 ft", "1–2 ft", "2–3 ft", "3–4 ft", "4–5 ft", "5+ ft"]
+    cols = WS_COLORS if palette == "flood" else WS_COLORS_BLUE
+    for (r, g, b), lab in zip(cols, labels):
         fig.add_trace(go.Scattermapbox(
             lat=[None], lon=[None], mode="markers",
             marker=dict(size=12, color=f"rgb({r},{g},{b})", symbol="circle"),
-            name=f"Water {lab}", showlegend=True, hoverinfo="skip"))
+            name=f"Flood depth {lab}", showlegend=True, hoverinfo="skip"))
 
 
 def add_flood_buildings(fig, df_map, wl_ft, point_scale, ring_fn, ring_legend_fn, hover_header):

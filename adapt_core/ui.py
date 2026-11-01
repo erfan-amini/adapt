@@ -141,6 +141,12 @@ section[data-testid="stSidebar"] .st-key-go_home [data-testid="stPageLink-NavLin
     letter-spacing: 0.06em; text-transform: uppercase; color: #0f172a; background: %(accent)s;
 }
 .adapt-side-note { font-size: 0.74rem; color: #94a3b8 !important; line-height: 1.4; padding: 0 0.2rem; }
+/* the "Switch to" block sits at the very bottom of the sidebar */
+section[data-testid="stSidebar"] [data-testid="stSidebarUserContent"] { min-height: calc(100vh - 4rem); display: flex; flex-direction: column; }
+section[data-testid="stSidebar"] [data-testid="stSidebarUserContent"] > div { flex: 1 1 auto; display: flex; flex-direction: column; }
+section[data-testid="stSidebar"] [data-testid="stSidebarUserContent"] > div > div { flex: 1 1 auto; display: flex; flex-direction: column; }
+section[data-testid="stSidebar"] [data-testid="stVerticalBlockBorderWrapper"]:has(> div > .st-key-side_switch) { margin-top: auto; }
+section[data-testid="stSidebar"] .st-key-side_switch { padding-bottom: 0.4rem; }
 
 /* ---- page header ---- */
 .adapt-header { margin: 0 0 0.9rem 0; }
