@@ -310,7 +310,11 @@ _PANEL_CSS = """
 .st-key-assistant_box [data-testid="stChatMessage"] img { width: 26px !important; height: 26px !important; border-radius: 50%; }
 .st-key-assistant_box [data-testid="stChatInput"] { border-radius: 12px; }
 .st-key-assistant_box [data-testid="stChatInput"] > div { width: 100% !important; max-width: 100% !important; }
-.st-key-assistant_box [data-testid="stChatInputTextArea"] { width: 100% !important; }
+.st-key-assistant_box [data-testid="stChatInputTextArea"] { width: 100% !important; color: #0f172a !important;
+  caret-color: #0f172a; -webkit-text-fill-color: #0f172a; background: #ffffff !important; }
+.st-key-assistant_box [data-testid="stChatInputTextArea"]::placeholder { color: #64748b !important; -webkit-text-fill-color: #64748b; }
+.st-key-assistant_box [data-testid="stChatInput"] > div { background: #ffffff !important; }
+.st-key-assistant_box [data-testid="stChatInputSubmitButton"] svg { fill: #0369a1; }
 .st-key-assistant_box [data-testid="stChatInput"] textarea { font-size: 0.82rem; }
 .st-key-assistant_box [data-testid="stVerticalBlock"] { gap: 0.35rem; }
 </style>
