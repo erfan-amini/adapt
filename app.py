@@ -4,9 +4,9 @@ Center for Climate Systems Research, The Climate School, Columbia University
 
 Entry point. Three audience modules behind a landing page:
     Households and Businesses - my home (address report), neighborhood maps
-    Community Planning        - community overview, dynamic maps (damage, adaptation, flood
-                                occurrences, flood and road maps), building-level reports,
-                                damage distributions
+    Community Planning        - community overview (summary, trends, damage distributions),
+                                dynamic maps (damage, adaptation, flood occurrences, flood and
+                                road maps), building-specific reports
     Developer                 - data and settings, NSI survey tool, fragility curves, run the model
 
 The pages are registered with st.navigation before anything heavy is
@@ -38,7 +38,6 @@ PAGES = [
     ("overview",    "planners",  "Community overview",    "📊", "overview",      "views.planners.overview"),
     ("dyn_maps",    "planners",  "Dynamic maps",          "🗺️", "maps",          "views.planners.dynamic_maps"),
     ("my_building", "planners",  "Building-specific reports", "🏠", "building-reports", "views.planners.my_building"),
-    ("dist",        "planners",  "Damage distributions",  "📦", "distributions", "views.planners.distributions"),
     ("dev_data",    "developer", "Data and settings",     "🗄️", "dev-data",      "views.developer.data"),
     ("dev_nsi",     "developer", "NSI survey tool",       "📍", "dev-nsi",       "views.developer.nsi_survey"),
     ("dev_curves",  "developer", "Fragility curves",      "📈", "dev-curves",    "views.developer.curves"),
