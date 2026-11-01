@@ -36,7 +36,7 @@ PAGES = [
     ("hex_maps",    "community", "Neighborhood maps",     "🔷", "neighborhood",  "views.community.neighborhood"),
     ("overview",    "planners",  "Community overview",    "📊", "overview",      "views.planners.overview"),
     ("dyn_maps",    "planners",  "Dynamic maps",          "🗺️", "maps",          "views.planners.dynamic_maps"),
-    ("my_building", "planners",  "My building",           "🏠", "my-building",   "views.planners.my_building"),
+    ("my_building", "planners",  "Building-level reports", "🏠", "building-reports", "views.planners.my_building"),
     ("flood_maps",  "planners",  "Flood maps",            "🌊", "flood-maps",    "views.planners.flood_maps"),
     ("road_maps",   "planners",  "Road maps",             "🛣️", "road-maps",     "views.planners.road_maps"),
     ("dist",        "planners",  "Damage distributions",  "📦", "distributions", "views.planners.distributions"),
