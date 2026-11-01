@@ -10,7 +10,7 @@ has three modules behind a landing page:
 | Module | For | Pages |
 |---|---|---|
 | Households and Businesses | residents, businesses, property owners | My home (address lookup and home report with PDF), Neighborhood maps (hexagon summaries, no single home shown) |
-| Community Planning | planners, agencies, community leaders | Community overview, Dynamic maps, Building-level reports, Flood maps, Road maps, Damage distributions |
+| Community Planning | planners, agencies, community leaders | Community overview, Dynamic maps (damage bins, adaptation effectiveness, flood occurrences, flood map, road map), Building-level reports, Damage distributions |
 | Developer | the project team | Data and settings, NSI survey tool, Fragility curves, Run the model |
 
 The sidebar also holds **Ask ADAPT**, a chat assistant that answers questions about the
@@ -56,8 +56,8 @@ adapt_core/
 views/
   home.py                  landing page
   community/               my_home.py, neighborhood.py
-  planners/                overview.py, dynamic_maps.py, my_building.py, building_depth.py,
-                           flood_maps.py, road_maps.py, distributions.py
+  planners/                overview.py, dynamic_maps.py (+ _terrain_views.py for the flood and
+                           road views), my_building.py, building_depth.py, distributions.py
   developer/               data.py, nsi_survey.py, curves.py, run_model.py
 docs/assistant_knowledge.md  what the assistant knows; edit when methods or pages change
 data/
@@ -76,7 +76,7 @@ Inputs
   foundation_type, foundation_height, ground_elevation, structure_value, content_value,
   longitude, latitude, ...)
 - `DDD___<Slug>_MC_annual_max_waterlevels_P50.csv` and `_P90.csv`: `Year`, `MC_0001` ... `MC_1000`
-- `<Slug>_osm_roads.json` (optional) saved OpenStreetMap roads for the Road maps page
+- `<Slug>_osm_roads.json` (optional) saved OpenStreetMap roads for the Road map view
 
 Results (written by the engine)
 

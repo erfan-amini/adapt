@@ -98,6 +98,7 @@ def _nice_scalebar_meters(target_m):
 
 def build_publication_map_figure(fig_map, *, location, occupancy, target_year,
                                  scenario_label, map_view, df_map,
+                                 extra_layers=None,
                                  width_px=2400, height_px=1800,
                                  mapbox_style="open-street-map",
                                  center_lat_override=None,
@@ -257,6 +258,8 @@ def build_publication_map_figure(fig_map, *, location, occupancy, target_year,
     if mapbox_style == "Aerial":
         mapbox_style = "white-bg"
         mapbox_layers = [_ESRI_WORLD_IMAGERY_LAYER]
+    if extra_layers:
+        mapbox_layers = list(mapbox_layers) + list(extra_layers)   # e.g. the flood-depth image
 
     # ----- Title and footer in paper coordinates -----
     title_main = f"Building-level Flood Risk - {location}"

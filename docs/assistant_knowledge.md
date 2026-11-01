@@ -43,20 +43,24 @@ and name at the top of the sidebar returns to the landing page.
 
 ### Community Planning (for planners, agencies, community leaders)
 - Community overview: community-wide damage summary and settings.
-- Dynamic maps: building-level maps with three views. Damage bins (P90
-  damage with no action in fixed bins),
-  Adaptation effectiveness (cheapest measure that works for each building),
-  Flood occurrences (how many years the first floor floods through the
-  horizon). Advanced options hold the basemap (Streets or Aerial), point
-  size, a black ring around non-residential buildings, buildings with $0
-  damage, the effectiveness rule (statistic and cutoff), the elevation
-  cutoff, the DFE status filter, and find-by-ID.
+- Dynamic maps: building-level maps with five views. Damage bins (P90
+  damage with no action in fixed bins), Adaptation effectiveness (cheapest
+  measure that works for each building), Flood occurrences (how many years
+  the first floor floods through the horizon), Flood map (bathtub flooding
+  on USGS 3DEP terrain for a chosen present-day flood level, high tide,
+  monthly, annual, 10% or 1% annual chance, plus the modeled sea-level rise
+  for the selected year and scenario; buildings colored dry, water on the
+  lot, or first floor flooded), and Road map (OpenStreetMap roads flooded,
+  dry but cut off, or dry and reachable at that level). Advanced options
+  hold the basemap (Streets or Aerial), point size, a black ring around
+  non-residential buildings, buildings with $0 damage, the effectiveness
+  rule (statistic and cutoff), the elevation cutoff, the present-day flood
+  levels, terrain detail, a sea-level-rise override, road options, the DFE
+  status filter, and find-by-ID.
 - Building-level reports: one building by NSI id: attributes, annual flood exposure,
   flood depth by year, retrofit figures, damage trajectory under both
   sea-level-rise scenarios with a side-by-side table, and flood depth tables
   for flood levels the user enters.
-- Flood maps: water depth over terrain (USGS 3DEP) for chosen flood levels.
-- Road maps: which roads flood (OpenStreetMap roads over the flood surface).
 - Damage distributions: how damage is distributed across buildings and
   measures.
 
@@ -122,8 +126,8 @@ and name at the top of the sidebar returns to the landing page.
 - Adaptation effectiveness map rule: each building is colored by the
   cheapest measure that brings the chosen statistic (P90 by default, or the
   median) of its cumulative damage through the selected year to or below
-  the chosen cutoff ($20k by default; other choices $0, $1k, $5k, $10k,
-  $15k, 1/2/5/10% of structure value, or "removes 90% of the damage").
+  the chosen cutoff ($15k by default; other choices $0, $1k, $5k, $10k,
+  $20k, 1/2/5/10% of structure value, or "removes 90% of the damage").
   Order: No damage, Raise Utilities, WFP Basement, Elevation, Residual
   damage (under DFE, first floor below the elevation cutoff, and even
   elevation misses the rule). Residual damage means the conversation moves
