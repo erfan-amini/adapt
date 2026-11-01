@@ -34,9 +34,7 @@ and name at the top of the sidebar returns to the landing page.
   report: house information, expected future flood depth above the ground,
   and cumulative damage by action for 2040 and 2055 (or the available
   horizons), with a PDF download. One home at a time; the address is not
-  stored. Before an address is typed, the page shows an example report for
-  a real but unnamed home in the community (a typical home with flood
-  damage; its address and id are withheld) next to the search panel.
+  stored.
 - Neighborhood maps: flood risk summarized by hexagon (about 160 m across by
   default, adjustable). Hexagons with fewer than 2 buildings are hidden so
   no single home can be read off the map; the number of buildings in a hexagon is not shown. Measures: share of homes with
