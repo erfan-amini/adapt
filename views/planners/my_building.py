@@ -23,7 +23,7 @@ def render(ctx):
     from adapt_core import ui as _ui
     from views.planners import building_depth as _depth
     _ui.page_header(
-        "Building-level reports",
+        "Building-specific reports",
         "Pick a home or a business by its NSI id and see its flood exposure, projected damage over time, what "
         "each adaptation option would save, and water depth at the building for flood levels you choose.",
         module_key="planners", location=location_name,

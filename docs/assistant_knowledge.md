@@ -57,7 +57,7 @@ and name at the top of the sidebar returns to the landing page.
   rule (statistic and cutoff), the elevation cutoff, the present-day flood
   levels, terrain detail, a sea-level-rise override, road options, the DFE
   status filter, and find-by-ID.
-- Building-level reports: one building by NSI id: attributes, annual flood exposure,
+- Building-specific reports: one building by NSI id: attributes, annual flood exposure,
   flood depth by year, retrofit figures, damage trajectory under both
   sea-level-rise scenarios with a side-by-side table, and flood depth tables
   for flood levels the user enters.

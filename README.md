@@ -10,7 +10,7 @@ has three modules behind a landing page:
 | Module | For | Pages |
 |---|---|---|
 | Households and Businesses | residents, businesses, property owners | My home (address lookup and home report with PDF), Neighborhood maps (hexagon summaries, no single home shown) |
-| Community Planning | planners, agencies, community leaders | Community overview, Dynamic maps (damage bins, adaptation effectiveness, flood occurrences, flood map, road map), Building-level reports, Damage distributions |
+| Community Planning | planners, agencies, community leaders | Community overview, Dynamic maps (damage bins, adaptation effectiveness, flood occurrences, flood map, road map), Building-specific reports, Damage distributions |
 | Developer | the project team | Data and settings, NSI survey tool, Fragility curves, Run the model |
 
 The sidebar also holds **Ask ADAPT**, a chat assistant that answers questions about the

@@ -37,7 +37,7 @@ PAGES = [
     ("hex_maps",    "community", "Neighborhood maps",     "🔷", "neighborhood",  "views.community.neighborhood"),
     ("overview",    "planners",  "Community overview",    "📊", "overview",      "views.planners.overview"),
     ("dyn_maps",    "planners",  "Dynamic maps",          "🗺️", "maps",          "views.planners.dynamic_maps"),
-    ("my_building", "planners",  "Building-level reports", "🏠", "building-reports", "views.planners.my_building"),
+    ("my_building", "planners",  "Building-specific reports", "🏠", "building-reports", "views.planners.my_building"),
     ("dist",        "planners",  "Damage distributions",  "📦", "distributions", "views.planners.distributions"),
     ("dev_data",    "developer", "Data and settings",     "🗄️", "dev-data",      "views.developer.data"),
     ("dev_nsi",     "developer", "NSI survey tool",       "📍", "dev-nsi",       "views.developer.nsi_survey"),
