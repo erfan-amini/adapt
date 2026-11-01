@@ -79,18 +79,21 @@ def _sidebar(module, available_locations, registry):
             p = next(p for p in PAGES if p[0] == key)
             st.page_link(ST_PAGES[key], label=p[2], icon=p[3])
         st.divider()
-        st.markdown("<div class='adapt-side-note'>Other modules</div>", unsafe_allow_html=True)
-        for k in C.MODULES:
-            if k != module:
-                st.page_link(ST_PAGES[FIRST_PAGE[k]], label=C.MODULES[k]["title"], icon=C.MODULES[k]["icon"])
-        st.divider()
 
 
 def _sidebar_tail(module, ctx, title):
-    """Assistant panel and credit line, after the page context exists."""
+    """After the page context exists: the assistant panel, then the other
+    module(s) at the very bottom, then the credit line. Developer is reached
+    from the landing page only, so it is not listed here."""
     from adapt_core import assistant
     with st.sidebar:
         assistant.sidebar_panel(module, ctx, title)
+        others = [k for k in C.MODULES if k != module and k != "developer"]
+        if others:
+            st.markdown("<div class='adapt-side-note'>Switch to</div>", unsafe_allow_html=True)
+            for k in others:
+                st.page_link(ST_PAGES[FIRST_PAGE[k]], label=C.MODULES[k]["title"], icon=C.MODULES[k]["icon"])
+            st.divider()
         st.markdown("<div class='adapt-side-note'>Center for Climate Systems Research<br>"
                     "The Climate School, Columbia University</div>", unsafe_allow_html=True)
 
