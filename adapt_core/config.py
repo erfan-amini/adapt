@@ -75,7 +75,7 @@ REPORT_CONTACT = "Erfan Amini (ea3246@columbia.edu)"
 REPORT_HORIZON_YEARS = (2040, 2055)        # used when the results include them
 ADDRESS_SNAP_M = 40.0                       # max distance from the geocoded point to a building
 ADDRESS_CANDIDATES_M = 60.0                 # other buildings offered when the nearest is not certain
-HEX_MIN_BUILDINGS = 5                       # neighborhood maps: hexagons with fewer buildings are hidden
+HEX_MIN_BUILDINGS = 3                       # neighborhood maps: hexagons with fewer buildings are hidden
 HEX_DEFAULT_SIZE_M = 160                    # hexagon width (flat to flat), metres
 
 # ---------------------------------------------------------------------------

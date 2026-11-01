@@ -418,7 +418,12 @@ def landing_dark():
         .adapt-module { border: 1px solid rgba(255,255,255,0.0) !important; box-shadow: 0 10px 30px rgba(0,0,0,0.30) !important; }
         [class*="st-key-go_"]:hover .adapt-module { box-shadow: 0 18px 44px rgba(0,0,0,0.45) !important; }
         /* the small Developer button under the cards */
-        .st-key-dev_pill { margin-top: 0.35rem; }
+        /* Streamlit gives the markdown container a -1rem bottom margin (to cancel a
+           trailing paragraph's margin); our card is a div, so the container would sit
+           1rem shorter than the card and the button below would overlap it */
+        [class*="st-key-go_"] [data-testid="stMarkdownContainer"] { margin-bottom: 0 !important; }
+        .adapt-module { margin: 0 !important; }
+        .st-key-dev_pill { margin-top: 0.6rem; }
         .st-key-dev_pill [data-testid="stElementContainer"] { display: flex; justify-content: center; }
         .st-key-dev_pill [data-testid="stPageLink"] { width: auto !important; }
         .st-key-dev_pill [data-testid="stPageLink"] a, .st-key-dev_pill [data-testid="stPageLink-NavLink"] {
