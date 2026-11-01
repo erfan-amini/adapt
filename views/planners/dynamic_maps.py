@@ -11,6 +11,7 @@ from types import SimpleNamespace
 from adapt_core.analysis import (compute_damage_bin_breaks, compute_flood_occurrences, prepare_map_data)
 from adapt_core.helpers import (ADD_STORY_LABEL, ZERO_THRESH_DISPLAY, _elev_eligible_flag, _flag_true, _is_one_story_bldg, fmt_money_short, format_currency, is_residential, nice_round_up, smart_money_ticks)
 from adapt_core.mapexport import (_basemap_config, build_publication_map_figure, export_map_image)
+from views.planners import _terrain_views as TV
 
 
 def render(ctx):
@@ -33,8 +34,10 @@ def render(ctx):
     _ui.page_header(
         "Dynamic maps",
         "Interactive map of building-level flood risk. Switch the <b>Map View</b> between binned damage, "
-        "adaptation effectiveness and <b>flood occurrences</b> (how often each building floods through a chosen "
-        "horizon). Hover any building for details; click one to open it below.",
+        "adaptation effectiveness, <b>flood occurrences</b> (how often each building floods through a chosen "
+        "horizon), the <b>flood map</b> (water over the terrain at a chosen flood level plus sea-level rise) and "
+        "the <b>road map</b> (flooded and cut-off roads). Hover any building for details; click one to open it "
+        "below.",
         module_key="planners", location=location_name,
     )
     ctx.render_inline_settings(["occ", "year", "scn"])
@@ -62,6 +65,8 @@ def render(ctx):
             "Damage Bins": "📊 Damage bins",
             "Adaptation Effectiveness": "🛡️ Adaptation effectiveness",
             "Flood Occurrences": "🌊 Flood occurrences",
+            "Flood Map": "💧 Flood map",
+            "Road Map": "🛣️ Road map",
         }
         # Fixed default + callback: clicking the active view would deselect it
         # (value None); the callback puts the last view back. Keeping the
@@ -83,7 +88,10 @@ def render(ctx):
                     "**Adaptation effectiveness**: classifies each building by the cheapest retrofit that "
                     "brings its P90 (or median) cumulative damage below a cutoff you choose. "
                     "**Flood occurrences**: how many times each building's first floor floods from 2025 "
-                    "through the selected horizon."
+                    "through the selected horizon. "
+                    "**Flood map**: the water at a chosen flood level plus sea-level rise over the terrain, and "
+                    "what it reaches at each building. "
+                    "**Road map**: which roads are flooded, cut off, or dry at that level."
                 ),
             )
         # Clicking the active segment deselects it; keep the last view instead.
@@ -116,6 +124,35 @@ def render(ctx):
             ss["_map_fo_last"] = _fp_label
             flood_pct_key = _FP[_fp_label]
 
+        # Flood map / Road map - which present-day flood level to map. The
+        # levels themselves are edited under Advanced options (keys
+        # map_fl_<key>); 0 means "not set" and the level is not offered.
+        _terrain_view = map_view in ("Flood Map", "Road Map")
+        _cfg_loc = _ui.location_cfg(ctx.registry, selected_location) or {}
+        _fl_defaults = TV.level_defaults(loc_entry, _cfg_loc)
+        _fl_values = {k: float(ss.get(f"map_fl_{k}_{selected_location}", _fl_defaults[k])) for k, _l, _h in TV.LEVELS}
+        _fl_options = {f"{lbl} ({_fl_values[k]:.1f} ft)": k for k, lbl, _h in TV.LEVELS if _fl_values[k] > 0}
+        flood_level_key = None
+        if _terrain_view:
+            if not _fl_options:
+                st.warning("No present-day flood levels are set. Enter them under Advanced options.")
+            else:
+                _fl_first = next(iter(_fl_options))
+                with ctx._keyed_container("map_fo_row"):
+                    _fl_pick = st.segmented_control(
+                        "Flood level", options=list(_fl_options), default=_fl_first,
+                        selection_mode="single", key=f"map_fl_pick_{selected_location}",
+                        on_change=_keep_selection,
+                        args=(f"map_fl_pick_{selected_location}", "_map_fl_last", _fl_first),
+                        help="Present-day flood level (ft NAVD88). The map adds the modeled sea-level rise for "
+                             "the selected year and scenario. Edit the levels under Advanced options.",
+                    )
+                _fl_pick = _fl_pick if _fl_pick in _fl_options else ss.get("_map_fl_last", _fl_first)
+                if _fl_pick not in _fl_options:
+                    _fl_pick = _fl_first
+                ss["_map_fl_last"] = _fl_pick
+                flood_level_key = _fl_options[_fl_pick]
+
         # ---- Advanced options (collapsed) ----------------------------------
         # Adaptation Effectiveness - a measure is effective when it brings
         # the chosen statistic (P90 by default, or the median) of the
@@ -131,7 +168,7 @@ def render(ctx):
             "5% of structure value": ("pct", 0.05), "10% of structure value": ("pct", 0.10),
             "Removes 90% of the damage": ("cut", 0.90),
         }
-        _CUTOFF_DEFAULT = "$20k"
+        _CUTOFF_DEFAULT = "$15k"
         _bfe_default = (loc_entry or {}).get('bfe_ft')
         _bfe_default = float(_bfe_default) if _bfe_default is not None and pd.notna(_bfe_default) else 8.0
         elev_cutoff_ft = _bfe_default
@@ -147,6 +184,7 @@ def render(ctx):
         with ctx._keyed_container("map_adv_box"):
             if not adv_on:
                 st.markdown("<style>.st-key-map_adv_box { display: none !important; }</style>", unsafe_allow_html=True)
+            st.markdown("<div class='adapt-adv-label' style='margin-top:0'>Display</div>", unsafe_allow_html=True)
             a1, a2, a3, a4 = st.columns([1.15, 1.25, 1, 1], vertical_alignment="center")
             with a1:
                 basemap_choice = st.segmented_control(
@@ -207,6 +245,41 @@ def render(ctx):
                          f"include every Under-DFE building.",
                 )
 
+            # Flood map / Road map inputs (disabled outside those views).
+            st.markdown("<div class='adapt-adv-label'>Flood and road maps · present-day flood levels (ft NAVD88)</div>",
+                        unsafe_allow_html=True)
+            _flc = st.columns(len(TV.LEVELS), gap="small")
+            for _col, (_k, _lbl, _help) in zip(_flc, TV.LEVELS):
+                with _col:
+                    st.number_input(_lbl, value=float(_fl_defaults[_k]), min_value=0.0, step=0.1, format="%.2f",
+                                    key=f"map_fl_{_k}_{selected_location}", disabled=not _terrain_view, help=_help)
+            d1, d2, d3, d4 = st.columns([1.0, 0.9, 1.15, 1.25], vertical_alignment="bottom")
+            with d1:
+                _detail_label = st.selectbox("Terrain detail", list(TV.DETAIL), index=0, key="map_terrain_detail",
+                                             disabled=not _terrain_view,
+                                             help="Grid size of the USGS 3DEP terrain. Finer is sharper and slower.")
+            with d2:
+                _slr_override = st.number_input("Sea-level rise override (ft)", value=0.0, min_value=0.0, step=0.1,
+                                                format="%.2f", key="map_slr_override", disabled=not _terrain_view,
+                                                help="0 = the modeled rise for the selected year and scenario. Enter "
+                                                     "a value to map a rise of your own instead.")
+            with d3:
+                _road_access = st.checkbox("Roads: mark cut-off roads", value=True, key="map_road_access",
+                                           disabled=map_view != "Road Map",
+                                           help="A dry road is 'cut off' when flooding severs every dry route from "
+                                                "it to the main road network.")
+            with d4:
+                _road_entry = st.checkbox("Roads: keep the main entrance open", value=True, key="map_road_entry",
+                                          disabled=map_view != "Road Map",
+                                          help="The access road off the main road often floods first and would "
+                                               "make the whole area read as cut off. With this on it still shows "
+                                               "flooded but does not cut the area off.")
+            _road_entry_xy = ""
+            if map_view == "Road Map" and _road_entry:
+                _road_entry_xy = st.text_input("Entrance override (lat, lon; blank = auto-detect)", value="",
+                                               key="map_road_entry_xy", placeholder="e.g. 40.7650, -72.8450")
+
+            st.markdown("<div class='adapt-adv-label'>Filters and search</div>", unsafe_allow_html=True)
             c1, c2, c3 = st.columns([1.4, 1.2, 0.8], vertical_alignment="bottom")
             with c1:
                 if fp_options:
@@ -225,6 +298,8 @@ def render(ctx):
                 with btn_b:
                     clear_clicked = st.button("✖ Clear", key="map_search_clear", use_container_width=True)
         ss["_map_ae_stat_last"] = _stat_label
+        _res_m, _target_px = TV.DETAIL[_detail_label]
+        _fl_values = {k: float(ss.get(f"map_fl_{k}_{selected_location}", _fl_defaults[k])) for k, _l, _h in TV.LEVELS}
         _ae_stat = _AE_STATS[_stat_label]                 # 'P90' or 'P50'
         _ae_stat_word = "P90" if _ae_stat == "P90" else "median"
         _cutoff_spec = _CUTOFF_OPTIONS[cutoff_label]
@@ -309,8 +384,8 @@ def render(ctx):
             # In particular, for the bins view, hiding by P50 would
             # silently drop every building with P50 = 0 but P90 > 0 -
             # the very buildings that drive tail-risk planning.
-            if map_view == "Flood Occurrences":
-                # Flood view shows ALL buildings (a building that never
+            if map_view in ("Flood Occurrences", "Flood Map", "Road Map"):
+                # These views show ALL buildings (a building that never
                 # floods is drawn green, not hidden), so the damage-based
                 # "$0 damage" hide filter doesn't apply here.
                 zero_filter_col = None
@@ -672,6 +747,8 @@ def render(ctx):
                 bin_caption_extra = ""  # for the Damage Bins view
                 ae_gap_note = ""        # for the Adaptation Effectiveness view
                 flood_occ_note = ""     # for the Flood Occurrences view
+                _extra_layers = []      # flood-depth image layer for the Flood/Road map views
+                terrain_note = ""       # caption for those views
                 _flood_occ_df = None    # populated by the Flood Occurrences view
 
                 # =====================================================
@@ -1257,6 +1334,73 @@ def render(ctx):
                             _add_highlight_ring_legend(fig_map)
                             _flood_occ_df = dM   # for the metrics/caption below
 
+                # =====================================================
+                # VIEW 5 / 6 - Flood map and Road map: bathtub flooding
+                # on USGS 3DEP terrain for a present-day flood level plus
+                # the modeled sea-level rise (or an override).
+                # =====================================================
+                elif map_view in ("Flood Map", "Road Map") and flood_level_key is not None:
+                    _wl_base = float(_fl_values[flood_level_key])
+                    _slr_used = float(_slr_override) if _slr_override and _slr_override > 0 \
+                        else float(TV.slr_ft(loc_entry, scenario, target_year))
+                    _wl_now = _wl_base + _slr_used
+                    _lvl_label = next(lbl for k, lbl, _h in TV.LEVELS if k == flood_level_key)
+                    try:
+                        _bbox_r, _site_c = TV.roi(loc_entry)
+                        with st.spinner("Reading terrain (USGS 3DEP) and flooding it..."):
+                            _depth_layer, _flooded_km2, _dem_ext = TV.depth_layer(_bbox_r, _res_m, round(_wl_now, 2))
+                        _extra_layers.append(_depth_layer)
+                    except Exception as _e:
+                        _depth_layer = None
+                        st.error("Could not load terrain for this area from USGS 3DEP (the app needs internet "
+                                 f"access at run time). Details: {_e}")
+                    _slr_txt = (f"your override of {_slr_used:.2f} ft" if (_slr_override and _slr_override > 0)
+                                else f"{_slr_used:.2f} ft of modeled sea-level rise by {int(target_year)} "
+                                     f"({'median' if scenario == '50th-percentile' else 'high'} scenario)")
+                    if _depth_layer is not None:
+                        TV.add_depth_legend(fig_map)
+
+                        def _hdr(row):
+                            _addr = getattr(row, 'address', None)
+                            if isinstance(_addr, str) and _addr.strip():
+                                return f"<b>{_addr}</b> <span style='color:#94a3b8'>#{int(row.id)}</span><br>"
+                            return f"<b>Building #{int(row.id)}</b><br>"
+                        if map_view == "Flood Map":
+                            _fcounts = TV.add_flood_buildings(fig_map, df_map, _wl_now, _point_scale,
+                                                              _add_highlight_ring, _add_highlight_ring_legend, _hdr)
+                            terrain_note = (
+                                f"**{_lvl_label} flood** at **{_wl_now:.2f} ft NAVD88** = present-day level "
+                                f"{_wl_base:.2f} ft + {_slr_txt}. Flooded land about **{_flooded_km2:.2f} km²** "
+                                f"(bathtub model on USGS 3DEP terrain, no hydraulic connectivity; open water hidden). "
+                                f"Buildings: **{_fcounts.get(2, 0):,}** with the first floor flooded, "
+                                f"**{_fcounts.get(1, 0):,}** with water on the lot below the first floor, "
+                                f"**{_fcounts.get(0, 0):,}** dry. Hover a building for its ground and first-floor "
+                                f"elevations and the water depth."
+                            )
+                        else:
+                            try:
+                                with st.spinner("Classifying roads..."):
+                                    _segs, _rcnt, _n_roads, _entry_note = TV.classified_roads(
+                                        selected_location, _bbox_r, _res_m, round(_wl_now, 2), bool(_road_access),
+                                        bool(_road_entry), (_road_entry_xy or "").strip(), loc_entry)
+                            except Exception as _e:
+                                _segs = None
+                                st.error("Could not load the OpenStreetMap roads for this area (the public Overpass "
+                                         f"servers may be busy; try again in a moment). Details: {_e}")
+                            if _segs is not None:
+                                TV.add_context_buildings(fig_map, df_map, _point_scale)
+                                TV.add_road_traces(fig_map, _segs, _rcnt, bool(_road_access))
+                                _acc_txt = (f", **{_rcnt.get('pct_inacc', 0):.0f}%** dry but cut off"
+                                            if _road_access else "")
+                                terrain_note = (
+                                    f"**{_lvl_label} flood** at **{_wl_now:.2f} ft NAVD88** = present-day level "
+                                    f"{_wl_base:.2f} ft + {_slr_txt}. Of {_n_roads:,} OpenStreetMap road ways: "
+                                    f"**{_rcnt.get('pct_flood', 0):.0f}%** of road length flooded{_acc_txt}, "
+                                    f"**{_rcnt.get('pct_dry', 0):.0f}%** dry and reachable. Road elevations and flood "
+                                    f"depth from USGS 3DEP (~{_res_m:.0f} m grid)."
+                                    + (f" {_entry_note}" if _entry_note else "")
+                                )
+
                 # ---- Search highlight (auto-expires) ----
                 # If the user just searched for a Building ID and the
                 # highlight is still fresh, drop a magenta ring on top
@@ -1333,7 +1477,7 @@ def render(ctx):
                 fig_map.update_layout(
                     mapbox=dict(
                         style=_bm_style,
-                        layers=_bm_layers,
+                        layers=list(_bm_layers) + list(_extra_layers),
                         center=dict(lat=center_lat, lon=center_lon),
                         zoom=_default_map_zoom
                     ),
@@ -1486,6 +1630,10 @@ def render(ctx):
                             "Switch the SLR scenario or horizon (year) above to update, and use "
                             "the percentile selector to read the low / median / high MC outcome."
                         )
+                elif map_view in ("Flood Map", "Road Map"):
+                    if terrain_note:
+                        st.caption(terrain_note + " Change the flood level above the map, and the present-day "
+                                   "levels, terrain detail and sea-level rise under Advanced options.")
 
                 col1, col2 = st.columns(2)
 
@@ -1495,7 +1643,9 @@ def render(ctx):
                     else:
                         st.metric("Buildings Shown", f"{len(df_map):,}")
                 with col2:
-                    if map_view == "Flood Occurrences" and _flood_occ_df is not None and len(_flood_occ_df):
+                    if map_view in ("Flood Map", "Road Map") and terrain_note:
+                        st.metric("Water level mapped (ft NAVD88)", f"{_wl_now:.2f}")
+                    elif map_view == "Flood Occurrences" and _flood_occ_df is not None and len(_flood_occ_df):
                         _nflood = int((_flood_occ_df['occ_show'] > 0).sum())
                         _pctw = {'occ_mean': 'mean', 'occ_P10': 'P10',
                                  'occ_P50': 'median', 'occ_P90': 'P90'}[flood_pct_key]
@@ -1676,6 +1826,7 @@ def render(ctx):
                                 scenario_label=_scenario_label,
                                 map_view=map_view,
                                 df_map=df_map,
+                                extra_layers=list(_extra_layers),
                                 width_px=ex_w, height_px=ex_h,
                                 mapbox_style=export_basemap_value,
                                 center_lat_override=custom_center_lat,

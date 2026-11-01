@@ -248,7 +248,7 @@ section[data-testid="stSidebar"] .st-key-go_home [data-testid="stPageLink-NavLin
 .st-key-map_adv_box { border: 1px solid #e2e8f0; border-radius: 14px; padding: 0.9rem 1.1rem 0.4rem 1.1rem;   background: #f8fafc; }
 .adapt-adv-label { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #64748b; margin: 0.9rem 0 0.1rem 0; }
 .st-key-map_view_row [data-testid='stButtonGroup'] { width: 100%% !important; }
-.st-key-map_view_row [data-testid='stButtonGroup'] > div { display: grid !important; width: 100%% !important;   max-width: none !important;   grid-template-columns: repeat(3, minmax(max-content, 1fr)) !important; }
+.st-key-map_view_row [data-testid='stButtonGroup'] > div { display: grid !important; width: 100%% !important;   max-width: none !important;   grid-template-columns: repeat(5, minmax(max-content, 1fr)) !important; }
 .st-key-map_view_row [data-testid='stButtonGroup'] button { width: auto !important; max-width: none !important;   justify-content: center; padding: 0.7rem 1rem; min-height: 3rem; }
 .st-key-map_view_row [data-testid='stButtonGroup'] button p { font-size: 0.98rem; font-weight: 600; }
 .st-key-map_view_row [data-testid='stButtonGroup'] button:first-child { border-radius: 12px 0 0 12px; }
