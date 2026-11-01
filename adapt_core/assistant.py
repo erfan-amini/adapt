@@ -315,6 +315,7 @@ _PANEL_CSS = """
 .st-key-assistant_box .adapt-ai-head .t { font-weight: 800; color: #f8fafc !important; font-size: 0.98rem; letter-spacing: 0.02em; line-height: 1.1; }
 .st-key-assistant_box .adapt-ai-head .s { font-size: 0.7rem; color: #94a3b8 !important; line-height: 1.25; margin-top: 2px; }
 .st-key-assistant_box .adapt-ai-hint { font-size: 0.72rem; color: #94a3b8 !important; margin: 0 0 0.35rem 0; }
+.st-key-assistant_box .adapt-ai-ask { font-size: 0.86rem; font-weight: 600; color: #ffffff !important; margin: 0.1rem 0 0.45rem 0; }
 /* suggested questions as chips that wrap inside the sidebar */
 .st-key-assistant_box [data-testid="stButton"] button {
   width: 100%; min-height: 0; height: auto; padding: 0.38rem 0.6rem; border-radius: 11px; text-align: left;
@@ -373,7 +374,7 @@ def sidebar_panel(module, ctx=None, page_title=""):
         audience = ss.get("assistant_audience")
         if audience not in ("resident", "expert"):
             # First question: who is asking. It sets the tone and length of every answer.
-            st.markdown("<div class='adapt-ai-hint'>First, so I can answer in the right way. Are you...</div>",
+            st.markdown("<div class='adapt-ai-ask'>First, so I can answer in the right way. Are you...</div>",
                         unsafe_allow_html=True)
             c1, c2 = st.columns(2)
             with c1:
