@@ -63,6 +63,162 @@ def _candidate_map(geo, cands, chosen_id, attrs_all):
     return fig
 
 
+_SHORT = {"No mitigation": "Do nothing", "Raise Utilities": "Elevate utilities", "WFP B": "Wet-floodproof basement",
+          "Elevate": "Elevate home", "WFP 1st": "Wet-floodproof 1st floor"}
+_PAL = {"No mitigation": "#94a3b8", "Raise Utilities": "#a3e635", "WFP B": "#facc15",
+        "Elevate": "#f97316", "WFP 1st": "#38bdf8"}
+
+# A small original illustration: a house on its lot with water rising on the left.
+_HOUSE_SVG = """
+<svg viewBox="0 0 320 150" width="100%" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A house near rising water">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e0f2fe"/><stop offset="1" stop-color="#f8fafc"/></linearGradient>
+    <linearGradient id="sea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#38bdf8" stop-opacity="0.75"/><stop offset="1" stop-color="#0ea5e9" stop-opacity="0.95"/></linearGradient>
+  </defs>
+  <rect width="320" height="150" rx="14" fill="url(#sky)"/>
+  <circle cx="268" cy="34" r="14" fill="#fde68a"/>
+  <path d="M0 108 Q60 96 120 104 T320 102 L320 150 L0 150 Z" fill="#bbf7d0"/>
+  <path d="M0 116 Q40 108 80 118 T160 118 L160 150 L0 150 Z" fill="url(#sea)"/>
+  <path d="M0 116 Q20 110 40 116 T80 116 T120 116 T160 118" fill="none" stroke="#e0f2fe" stroke-width="2" opacity="0.8"/>
+  <line x1="12" y1="92" x2="308" y2="92" stroke="#0369a1" stroke-width="1.5" stroke-dasharray="5 4"/>
+  <text x="16" y="86" font-size="9" fill="#0369a1" font-family="Inter, sans-serif" font-weight="600">flood level with sea-level rise</text>
+  <rect x="180" y="52" width="92" height="56" rx="3" fill="#ffffff" stroke="#cbd5e1"/>
+  <polygon points="172,54 226,20 280,54" fill="#f97316"/>
+  <rect x="250" y="26" width="10" height="18" fill="#64748b"/>
+  <rect x="214" y="76" width="18" height="32" rx="2" fill="#0ea5e9"/>
+  <rect x="190" y="64" width="16" height="14" rx="2" fill="#bae6fd" stroke="#7dd3fc"/>
+  <rect x="246" y="64" width="16" height="14" rx="2" fill="#bae6fd" stroke="#7dd3fc"/>
+  <rect x="176" y="108" width="100" height="5" fill="#94a3b8"/>
+  <text x="178" y="126" font-size="9" fill="#475569" font-family="Inter, sans-serif">first floor</text>
+  <text x="290" y="146" font-size="8" fill="#94a3b8" font-family="Inter, sans-serif" text-anchor="end">illustration</text>
+</svg>
+"""
+
+
+def _sample_building_id(loc_entry, mobile_raise_only):
+    """A real, typical home from the inventory for the example card: the
+    home at the 60th percentile of no-action damage (median scenario, last
+    horizon) among single-family homes (manufactured homes where the
+    community is mostly those) that can be elevated. Its id and address
+    are never shown."""
+    bl = (loc_entry or {}).get("buildings")
+    attrs = (loc_entry or {}).get("bldg_attrs")
+    if bl is None or attrs is None or len(bl) == 0:
+        return None
+    years = sorted(int(y) for y in bl["TargetYear"].unique() if int(y) > 2025)
+    hz = [y for y in C.REPORT_HORIZON_YEARS if y in years] or years[:2]
+    if not hz:
+        return None
+    base = bl[(bl["SLR"] == "50th-percentile") & (bl["TargetYear"] == hz[-1]) & (bl["Action"] == "No mitigation")]
+    base = base[pd.to_numeric(base["CumEAD_P50"], errors="coerce") > 1000.0]
+    if base.empty:
+        return None
+    if len(hz) > 1:                        # prefer a home with damage at the first horizon too
+        first = bl[(bl["SLR"] == "50th-percentile") & (bl["TargetYear"] == hz[0]) & (bl["Action"] == "No mitigation")]
+        early = set(first[pd.to_numeric(first["CumEAD_P50"], errors="coerce") > 0]["id"].astype(int))
+        both = base[base["id"].astype(int).isin(early)]
+        if not both.empty:
+            base = both
+    a = attrs.copy()
+    a["_id"] = a["id"].astype(int)
+    a = a.drop_duplicates("_id").set_index("_id")
+    want = "RES2" if mobile_raise_only else "RES1"
+
+    def _typical(row):
+        """Single-family, one story, no basement, can be elevated: the
+        plainest case, so the example reads easily."""
+        occ = str(row.get("occupancy_type", "") or "").upper()
+        if not occ.startswith(want):
+            return False
+        if mobile_raise_only:
+            return True
+        one_story = R._is_one_story_bldg(row.get("SOID"), row.get("number_of_stories"))
+        return (one_story and R.has_basement(row) is False
+                and bool(R._elev_eligible_flag(row.get("ElevationEligible"))))
+
+    ids = base["id"].astype(int)
+    known = ids.isin(a.index).values
+    base, ids = base[known], ids[known]
+    ok = np.array([_typical(a.loc[i]) for i in ids], dtype=bool)
+    if not ok.any():                       # fall back to any single-family home
+        occ = a["occupancy_type"].astype(str).str.upper() if "occupancy_type" in a else pd.Series("", index=a.index)
+        ok = ids.map(occ).fillna("").str.startswith(want).values
+    cand = base[ok] if ok.any() else base
+    vals = pd.to_numeric(cand["CumEAD_P50"], errors="coerce")
+    q = vals.quantile(0.5)                 # the median home among those with damage
+    return int(cand.iloc[int((vals - q).abs().values.argmin())]["id"])
+
+
+def _sample_card(ctx, loc_entry, cfg, location_name):
+    """The example report card shown before an address is typed."""
+    ss = st.session_state
+    key = f"home_sample_{ctx.selected_location}"
+    if key not in ss:
+        ss[key] = _sample_building_id(loc_entry, bool(ctx.mobile_raise_only))
+    sid = ss[key]
+    rep = R.build_report(loc_entry, cfg, sid, "", scenario="50th-percentile",
+                         mobile_raise_only=bool(ctx.mobile_raise_only)) if sid is not None else None
+    if rep is None:
+        st.markdown(f"<div class='adapt-sample'><div class='eyebrow'>Example report</div>{_HOUSE_SVG}"
+                    "<p class='foot'>Type your address to get a report like the one mailed to project partners: "
+                    "house information, expected flood depths and the damage each action avoids.</p></div>",
+                    unsafe_allow_html=True)
+        return
+
+    hz = rep["horizons"]
+    occ = (rep.get("occupancy") or "").upper()
+    kind = "manufactured home" if occ.startswith("RES2") else "home"
+    stories = f"{int(rep['stories'])}-story " if rep.get("stories") else ""
+    facts = [f"{stories}{kind}"]
+    if rep.get("basement") is not None:
+        facts.append("with a basement" if rep["basement"] else "no basement")
+    if rep.get("ffe_ft") is not None:
+        facts.append(f"first floor {rep['ffe_ft']:.1f} ft above sea level")
+    if rep.get("shortfall_ft") is not None and rep["shortfall_ft"] > 0:
+        facts.append(f"{rep['shortfall_ft']:.1f} ft below the recommended level")
+    facts_html = " · ".join(_html.escape(f) for f in facts)
+
+    tiles = ""
+    for y in hz:
+        items = rep["damage"].get(y, [])
+        base = next((i for i in items if i["action"] == "No mitigation"), None)
+        if base:
+            tiles += (f"<div class='tile'><div class='lbl'>Expected damage by {y} if nothing is done</div>"
+                      f"<div class='val'>{R.money(base['p50'])}</div>"
+                      f"<div class='sub'>range {R.money(base['p05'])} – {R.money(base['p95'])}</div></div>")
+
+    depth = ""
+    row10 = next((r for r in rep["depth_rows"] if r["key"] == "pct10_ft"), None)
+    if row10 and hz:
+        d = row10["by_year"][hz[-1]]["above_ground_ft"]
+        if d is not None:
+            depth = (f"<div class='depth'>🌊 A 10% annual chance flood by {hz[-1]}: "
+                     f"<b>{_html.escape(R.depth_phrase(d))}</b> at this house.</div>")
+
+    bars = ""
+    y_last = hz[-1] if hz else None
+    items = rep["damage"].get(y_last, []) if y_last else []
+    base_p50 = next((i["p50"] for i in items if i["action"] == "No mitigation"), None)
+    if items and base_p50:
+        bars += f"<div class='bars-title'>What each action would leave by {y_last}</div>"
+        for it in items:
+            w = max(2.0, min(100.0, 100.0 * it["p50"] / base_p50))
+            name = "Add a story" if (it["action"] == "WFP 1st" and "story" in it["label"]) else _SHORT.get(it["action"], it["action"])
+            av = f"<span class='av'>avoids {it['avoided'] * 100:.0f}%</span>" if it.get("avoided") is not None else ""
+            bars += (f"<div class='bar-row'><div class='bar-name'>{_html.escape(name)}</div>"
+                     f"<div class='bar-track'><div class='bar' style='width:{w:.0f}%;background:{_PAL.get(it['action'], '#64748b')}'></div></div>"
+                     f"<div class='bar-val'>{R.money(it['p50'])} {av}</div></div>")
+
+    st.markdown(
+        f"<div class='adapt-sample'>"
+        f"<div class='eyebrow'>Example · a real {_html.escape(location_name)} {kind}, address withheld</div>"
+        f"{_HOUSE_SVG}"
+        f"<div class='facts'>{facts_html}</div>"
+        f"<div class='tiles'>{tiles}</div>{depth}{bars}"
+        f"<p class='foot'>Your report looks like this, for your own home, with a PDF to download.</p>"
+        f"</div>", unsafe_allow_html=True)
+
+
 def _damage_chart(rep):
     """Grouped bars: expected damage by action for each horizon, with the P05 to P95 range."""
     fig = go.Figure()
@@ -116,6 +272,40 @@ def render(ctx):
         ".adapt-step { font-size:0.74rem; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:#0369a1; margin:0.2rem 0 0.2rem 0; }"
         ".adapt-dmg-line { font-size:0.95rem; margin:0.15rem 0; } .adapt-dmg-line b { color:#0f172a; }"
         ".adapt-dmg-sub { font-size:0.86rem; color:#15803d; margin:0 0 0.35rem 1.1rem; }"
+        # Step 1: the example card (left) and the search panel (right)
+        ".adapt-sample { background:#ffffff; border:1px solid #e2e8f0; border-radius:18px; padding:1rem 1.15rem 0.8rem 1.15rem; "
+        "  box-shadow:0 8px 24px rgba(15,23,42,0.06); }"
+        ".adapt-sample .eyebrow { font-size:0.72rem; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:#0369a1; margin-bottom:0.6rem; }"
+        ".adapt-sample svg { display:block; border-radius:14px; }"
+        ".adapt-sample .facts { font-size:0.9rem; color:#334155; margin:0.7rem 0 0.6rem 0; line-height:1.45; }"
+        ".adapt-sample .tiles { display:grid; grid-template-columns:1fr 1fr; gap:0.6rem; }"
+        ".adapt-sample .tile { background:#f0f9ff; border:1px solid #bae6fd; border-radius:12px; padding:0.55rem 0.75rem; }"
+        ".adapt-sample .tile .lbl { font-size:0.72rem; color:#475569; line-height:1.3; }"
+        ".adapt-sample .tile .val { font-size:1.35rem; font-weight:800; color:#0f172a; line-height:1.25; margin-top:2px; }"
+        ".adapt-sample .tile .sub { font-size:0.74rem; color:#64748b; }"
+        ".adapt-sample .depth { font-size:0.86rem; color:#334155; margin:0.65rem 0 0.2rem 0; }"
+        ".adapt-sample .bars-title { font-size:0.74rem; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; color:#64748b; margin:0.7rem 0 0.35rem 0; }"
+        ".adapt-sample .bar-row { display:grid; grid-template-columns: 9.5rem 1fr 9.5rem; align-items:center; gap:0.5rem; margin:0.22rem 0; font-size:0.84rem; }"
+        ".adapt-sample .bar-name { color:#334155; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }"
+        ".adapt-sample .bar-track { background:#f1f5f9; border-radius:999px; height:10px; overflow:hidden; }"
+        ".adapt-sample .bar { height:100%; border-radius:999px; }"
+        ".adapt-sample .bar-val { color:#0f172a; font-weight:600; white-space:nowrap; }"
+        ".adapt-sample .bar-val .av { color:#15803d; font-weight:600; font-size:0.78rem; margin-left:0.3rem; }"
+        ".adapt-sample .foot { font-size:0.8rem; color:#64748b; margin:0.8rem 0 0 0; }"
+        ".st-key-home_search { background:linear-gradient(180deg,#f0f9ff 0%,#ffffff 100%); border:1px solid #bae6fd; border-radius:18px; "
+        "  padding:1.2rem 1.3rem 1.1rem 1.3rem; box-shadow:0 8px 24px rgba(14,165,233,0.10); gap:0.6rem; }"
+        ".adapt-search-title { font-size:1.35rem; font-weight:800; color:#0f172a; letter-spacing:-0.01em; margin:0; }"
+        ".adapt-search-sub { font-size:0.92rem; color:#475569; margin:0.15rem 0 0.4rem 0; }"
+        ".adapt-steps { display:flex; flex-direction:column; gap:0.4rem; margin:0.2rem 0 0.5rem 0; }"
+        ".adapt-steps div { display:flex; align-items:center; gap:0.6rem; font-size:0.88rem; color:#334155; }"
+        ".adapt-steps span { flex:0 0 1.5rem; width:1.5rem; height:1.5rem; border-radius:999px; background:#0ea5e9; color:#fff; "
+        "  font-weight:700; font-size:0.78rem; display:inline-flex; align-items:center; justify-content:center; }"
+        ".st-key-home_search [data-testid='stTextInput'] input { font-size:1rem; height:2.7rem; }"
+        # Streamlit sizes elements to the column, not to the padded card: keep them inside it.
+        ".st-key-home_search > div, .st-key-home_search [data-testid='stElementContainer'], "
+        ".st-key-home_search [data-testid='stTextInput'], .st-key-home_search [data-testid='stHorizontalBlock'] "
+        "  { width:100% !important; max-width:100% !important; }"
+        ".st-key-home_search [data-testid='stMarkdownContainer'] { margin-bottom:0 !important; }"
         "</style>", unsafe_allow_html=True,
     )
 
@@ -125,7 +315,83 @@ def render(ctx):
 
     place_hint = f"{cfg.get('name', location_name)}, {cfg.get('state', '')}".strip(", ")
 
+    def _search(addr_in):
+        """Geocode the typed address and stash the candidates in session state."""
+        _reset()
+        addr = G.clean_address(addr_in)
+        if not addr:
+            ss["home_no_match"] = "Type a street address first."
+            return
+        # 1. Addresses the project team recorded in the inventory
+        inv_hits = G.match_inventory_address(attrs, addr)
+        geo = None
+        if len(inv_hits):
+            r0 = inv_hits.iloc[0]
+            geo = {"lat": float(r0["latitude"]), "lon": float(r0["longitude"]),
+                   "label": str(r0["address"]), "source": "project inventory",
+                   "query": addr}
+        else:
+            # 2. Public geocoders
+            with st.spinner("Looking up the address..."):
+                geo = G.geocode(addr, place_hint)
+        if geo and geo.get("error"):
+            ss["home_no_match"] = geo["error"]
+        elif not geo:
+            ss["home_no_match"] = ("We could not find that address. Check the house number and street name, "
+                                   "or add the town and state.")
+        else:
+            if len(inv_hits):
+                cands = inv_hits.head(3)
+            else:
+                cands = G.nearest_buildings(attrs, geo["lat"], geo["lon"], C.ADDRESS_CANDIDATES_M, limit=3)
+            if len(cands) == 0 or float(cands["distance_m"].iloc[0]) > C.ADDRESS_SNAP_M:
+                wider = G.nearest_buildings(attrs, geo["lat"], geo["lon"], 150.0, limit=3)
+                if len(wider) == 0:
+                    ss["home_no_match"] = (f"The address was found ({geo['label']}), but no building in our "
+                                           f"{location_name} inventory is within 150 m of it. The inventory may "
+                                           "not cover that street yet.")
+                else:
+                    ss["home_geo"] = geo
+                    ss["home_candidates"] = wider
+                    ss["home_far"] = True
+            else:
+                ss["home_geo"] = geo
+                ss["home_candidates"] = cands
+                ss["home_far"] = False
+            ss["home_address"] = G.clean_address(_with_place_text(addr, place_hint))
+
     # ---- Step 1: address ----------------------------------------------------
+    # Before a home is found: the example report on the left, the search
+    # panel on the right. Afterwards: a compact address bar at the top.
+    if not ss.get("home_geo"):
+        left, right = st.columns([1.05, 1.0], gap="large")
+        with left:
+            _sample_card(ctx, loc_entry, cfg, location_name)
+        with right:
+            with ctx._keyed_container("home_search"):
+                st.markdown("<p class='adapt-search-title'>Get the report for your home</p>"
+                            "<p class='adapt-search-sub'>Flood depths at your house, the damage to expect, and what "
+                            "each action would avoid, on screen and as a PDF.</p>"
+                            "<div class='adapt-steps'><div><span>1</span>Type your street address</div>"
+                            "<div><span>2</span>Confirm your home on the aerial photo</div>"
+                            "<div><span>3</span>Read or download your report</div></div>", unsafe_allow_html=True)
+                addr_in = st.text_input("Street address", key="home_addr_input",
+                                        placeholder=f"e.g. 1 Elfin Pl, {place_hint}", label_visibility="collapsed")
+                b1, b2 = st.columns(2)
+                with b1:
+                    find = st.button("🔎 Find my home", type="primary", use_container_width=True)
+                with b2:
+                    if st.button("Start over", use_container_width=True):
+                        _reset()
+                        st.rerun()
+                if find:
+                    _search(addr_in)
+                    if ss.get("home_geo"):
+                        st.rerun()
+                if ss.get("home_no_match"):
+                    st.warning(ss["home_no_match"])
+        return
+
     st.markdown("<div class='adapt-step'>Step 1 · Your address</div>", unsafe_allow_html=True)
     c1, c2, c3 = st.columns([2.2, 0.6, 0.5], vertical_alignment="bottom")
     with c1:
@@ -137,60 +403,14 @@ def render(ctx):
         if st.button("Start over", use_container_width=True):
             _reset()
             st.rerun()
-
     if find:
-        _reset()
-        addr = G.clean_address(addr_in)
-        if not addr:
-            st.warning("Type a street address first.")
-        else:
-            # 1. Addresses the project team recorded in the inventory
-            inv_hits = G.match_inventory_address(attrs, addr)
-            geo = None
-            if len(inv_hits):
-                r0 = inv_hits.iloc[0]
-                geo = {"lat": float(r0["latitude"]), "lon": float(r0["longitude"]),
-                       "label": str(r0["address"]), "source": "project inventory",
-                       "query": addr}
-            else:
-                # 2. Public geocoders
-                with st.spinner("Looking up the address..."):
-                    geo = G.geocode(addr, place_hint)
-            if geo and geo.get("error"):
-                ss["home_no_match"] = geo["error"]
-            elif not geo:
-                ss["home_no_match"] = ("We could not find that address. Check the house number and street name, "
-                                       "or add the town and state.")
-            else:
-                if len(inv_hits):
-                    cands = inv_hits.head(3)
-                else:
-                    cands = G.nearest_buildings(attrs, geo["lat"], geo["lon"], C.ADDRESS_CANDIDATES_M, limit=3)
-                if len(cands) == 0 or float(cands["distance_m"].iloc[0]) > C.ADDRESS_SNAP_M:
-                    wider = G.nearest_buildings(attrs, geo["lat"], geo["lon"], 150.0, limit=3)
-                    if len(wider) == 0:
-                        ss["home_no_match"] = (f"The address was found ({geo['label']}), but no building in our "
-                                               f"{location_name} inventory is within 150 m of it. The inventory may "
-                                               "not cover that street yet.")
-                    else:
-                        ss["home_geo"] = geo
-                        ss["home_candidates"] = wider
-                        ss["home_far"] = True
-                else:
-                    ss["home_geo"] = geo
-                    ss["home_candidates"] = cands
-                    ss["home_far"] = False
-                ss["home_address"] = G.clean_address(_with_place_text(addr, place_hint))
+        _search(addr_in)
+        st.rerun()
 
     if ss.get("home_no_match"):
         st.warning(ss["home_no_match"])
         return
     geo = ss.get("home_geo")
-    if not geo:
-        st.caption("Addresses recorded by the project team are matched directly; others are located with "
-                   "OpenStreetMap and the US Census Bureau geocoder and matched to the nearest building in the "
-                   "project's inventory. Your address is not stored.")
-        return
 
     cands = ss.get("home_candidates")
     # ---- Step 2: confirm ----------------------------------------------------
