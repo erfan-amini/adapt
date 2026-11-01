@@ -70,9 +70,10 @@ def render(ctx):
     st.markdown("<style>" + "".join(
         f".st-key-go_{k}:hover .adapt-module {{ border-color: {m['accent']}; }}" for k, m in C.MODULES.items()
     ) + "</style>", unsafe_allow_html=True)
-    # Developer is the narrow card; the two public modules share the rest equally.
-    cols = st.columns([1, 1, 0.44], gap="medium")
-    for col, (key, m) in zip(cols, C.MODULES.items()):
+    # The two public modules are cards; Developer is a small button under them.
+    public = [(k, m) for k, m in C.MODULES.items() if k != "developer"]
+    cols = st.columns(len(public), gap="medium")
+    for col, (key, m) in zip(cols, public):
         with col:
             with ctx._keyed_container(f"go_{key}"):
                 st.markdown(
@@ -84,3 +85,7 @@ def render(ctx):
                     unsafe_allow_html=True,
                 )
                 st.page_link(ctx.pages[ctx.first_page[key]], label=f"Open {m['title']}", use_container_width=True)
+
+    # Developer: a small centered button at the bottom of the page.
+    with ctx._keyed_container("dev_pill"):
+        st.page_link(ctx.pages[ctx.first_page["developer"]], label="Developer", icon="🛠️")

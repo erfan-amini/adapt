@@ -417,6 +417,17 @@ def landing_dark():
         .st-key-gate_inline [data-testid="stTextInputRootElement"] { box-shadow: 0 6px 18px rgba(0,0,0,0.25); border-radius: 8px; }
         .adapt-module { border: 1px solid rgba(255,255,255,0.0) !important; box-shadow: 0 10px 30px rgba(0,0,0,0.30) !important; }
         [class*="st-key-go_"]:hover .adapt-module { box-shadow: 0 18px 44px rgba(0,0,0,0.45) !important; }
+        /* the small Developer button under the cards */
+        .st-key-dev_pill { margin-top: 0.35rem; }
+        .st-key-dev_pill [data-testid="stElementContainer"] { display: flex; justify-content: center; }
+        .st-key-dev_pill [data-testid="stPageLink"] { width: auto !important; }
+        .st-key-dev_pill [data-testid="stPageLink"] a, .st-key-dev_pill [data-testid="stPageLink-NavLink"] {
+            display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.28rem 0.8rem; border-radius: 999px;
+            border: 1px solid rgba(148,163,184,0.35); background: rgba(255,255,255,0.06); color: #cbd5e1 !important;
+            font-size: 0.78rem; font-weight: 600; text-decoration: none; transition: background .15s ease, border-color .15s ease;
+        }
+        .st-key-dev_pill [data-testid="stPageLink"] a:hover { background: rgba(255,255,255,0.14); border-color: rgba(203,213,225,0.6); }
+        .st-key-dev_pill [data-testid="stPageLink"] a p, .st-key-dev_pill [data-testid="stPageLink"] a span { color: #cbd5e1 !important; font-size: 0.78rem; }
         /* footer */
         .stApp hr { border-color: rgba(148,163,184,0.18) !important; }
         .adapt-footer, .adapt-footer div { color: #94a3b8 !important; }
