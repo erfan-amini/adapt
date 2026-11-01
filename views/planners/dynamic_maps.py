@@ -1348,7 +1348,9 @@ def render(ctx):
                     try:
                         _bbox_r, _site_c = TV.roi(loc_entry)
                         with st.spinner("Reading terrain (USGS 3DEP) and flooding it..."):
-                            _depth_layer, _flooded_km2, _dem_ext = TV.depth_layer(_bbox_r, _res_m, round(_wl_now, 2))
+                            _depth_layer, _flooded_km2, _dem_ext = TV.depth_layer(
+                                _bbox_r, _res_m, round(_wl_now, 2),
+                                palette="flood" if map_view == "Flood Map" else "blue")
                         _extra_layers.append(_depth_layer)
                     except Exception as _e:
                         _depth_layer = None
@@ -1358,24 +1360,15 @@ def render(ctx):
                                 else f"{_slr_used:.2f} ft of modeled sea-level rise by {int(target_year)} "
                                      f"({'median' if scenario == '50th-percentile' else 'high'} scenario)")
                     if _depth_layer is not None:
-                        TV.add_depth_legend(fig_map)
-
-                        def _hdr(row):
-                            _addr = getattr(row, 'address', None)
-                            if isinstance(_addr, str) and _addr.strip():
-                                return f"<b>{_addr}</b> <span style='color:#94a3b8'>#{int(row.id)}</span><br>"
-                            return f"<b>Building #{int(row.id)}</b><br>"
+                        TV.add_depth_legend(fig_map, palette="flood" if map_view == "Flood Map" else "blue")
                         if map_view == "Flood Map":
-                            _fcounts = TV.add_flood_buildings(fig_map, df_map, _wl_now, _point_scale,
-                                                              _add_highlight_ring, _add_highlight_ring_legend, _hdr)
+                            # Same look as the original flood maps: the depth
+                            # ramp over the basemap, no building markers.
                             terrain_note = (
                                 f"**{_lvl_label} flood** at **{_wl_now:.2f} ft NAVD88** = present-day level "
-                                f"{_wl_base:.2f} ft + {_slr_txt}. Flooded land about **{_flooded_km2:.2f} km²** "
-                                f"(bathtub model on USGS 3DEP terrain, no hydraulic connectivity; open water hidden). "
-                                f"Buildings: **{_fcounts.get(2, 0):,}** with the first floor flooded, "
-                                f"**{_fcounts.get(1, 0):,}** with water on the lot below the first floor, "
-                                f"**{_fcounts.get(0, 0):,}** dry. Hover a building for its ground and first-floor "
-                                f"elevations and the water depth."
+                                f"{_wl_base:.2f} ft + {_slr_txt}. Flooded land about **{_flooded_km2:.2f} km²**. "
+                                f"Bathtub model on USGS 3DEP terrain (~{_res_m:.0f} m grid), no hydraulic "
+                                f"connectivity; open water (below 0 ft NAVD88) hidden."
                             )
                         else:
                             try:
@@ -1640,6 +1633,8 @@ def render(ctx):
                 with col1:
                     if map_view == "Flood Occurrences" and _flood_occ_df is not None:
                         st.metric("Buildings Evaluated", f"{len(_flood_occ_df):,}")
+                    elif map_view == "Flood Map" and terrain_note:
+                        st.metric("Flooded land (km²)", f"{_flooded_km2:.2f}")
                     else:
                         st.metric("Buildings Shown", f"{len(df_map):,}")
                 with col2:
