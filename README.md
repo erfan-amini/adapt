@@ -13,7 +13,7 @@ has three modules behind a landing page:
 | Community Planning | planners, agencies, community leaders | Community overview (summary, trends, damage distributions), Dynamic maps (damage bins, adaptation effectiveness, flood occurrences, flood map, road map), Building-specific reports |
 | Developer | the project team | Data and settings, NSI survey tool, Fragility curves, Run the model |
 
-The sidebar also holds **Ask ADAPT**, a chat assistant that answers questions about the
+The sidebar also holds **Ask ADAPT AI**, a chat assistant that answers questions about the
 tool, the methods and the selected community. It needs a free API key in the secrets
 (`[assistant]`, Google AI Studio recommended); without one the panel is hidden. What it
 knows is `docs/assistant_knowledge.md`, this README, and the settings and summary

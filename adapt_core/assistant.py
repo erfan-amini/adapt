@@ -282,13 +282,19 @@ def ask(cfg, system, history, question):
 _ROBOT_SVG = (
     "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'>"
     "<defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'>"
-    "<stop offset='0' stop-color='#38bdf8'/><stop offset='1' stop-color='#14b8a6'/></linearGradient></defs>"
+    "<stop offset='0' stop-color='#38bdf8'/><stop offset='1' stop-color='#14b8a6'/></linearGradient>"
+    "<linearGradient id='v' x1='0' y1='0' x2='0' y2='1'>"
+    "<stop offset='0' stop-color='#1e293b'/><stop offset='1' stop-color='#0f172a'/></linearGradient></defs>"
     "<circle cx='32' cy='32' r='32' fill='url(#g)'/>"
-    "<rect x='17' y='22' width='30' height='24' rx='8' fill='#0f172a'/>"
-    "<rect x='29' y='12' width='6' height='8' rx='3' fill='#0f172a'/><circle cx='32' cy='11' r='4' fill='#0f172a'/>"
-    "<circle cx='26' cy='33' r='4' fill='#7dd3fc'/><circle cx='38' cy='33' r='4' fill='#7dd3fc'/>"
-    "<rect x='25' y='40' width='14' height='3' rx='1.5' fill='#7dd3fc'/>"
-    "<rect x='11' y='29' width='5' height='10' rx='2.5' fill='#0f172a'/><rect x='48' y='29' width='5' height='10' rx='2.5' fill='#0f172a'/>"
+    "<line x1='32' y1='12' x2='32' y2='18' stroke='#f8fafc' stroke-width='2.4' stroke-linecap='round'/>"
+    "<circle cx='32' cy='10' r='3.2' fill='#fef08a'/>"
+    "<rect x='14' y='18' width='36' height='30' rx='11' fill='#f8fafc'/>"
+    "<rect x='9' y='28' width='5' height='11' rx='2.5' fill='#f8fafc'/><rect x='50' y='28' width='5' height='11' rx='2.5' fill='#f8fafc'/>"
+    "<rect x='19' y='24' width='26' height='15' rx='7' fill='url(#v)'/>"
+    "<rect x='23.5' y='28' width='6' height='7' rx='3' fill='#67e8f9'/><rect x='34.5' y='28' width='6' height='7' rx='3' fill='#67e8f9'/>"
+    "<rect x='25' y='29' width='2' height='2' rx='1' fill='#ffffff'/><rect x='36' y='29' width='2' height='2' rx='1' fill='#ffffff'/>"
+    "<path d='M26 43 q6 4 12 0' stroke='#0f172a' stroke-width='2.2' fill='none' stroke-linecap='round'/>"
+    "<rect x='26' y='48' width='12' height='4' rx='2' fill='#f8fafc' opacity='0.9'/>"
     "</svg>"
 )
 _ROBOT_URI = "data:image/svg+xml;utf8," + _ROBOT_SVG.replace("#", "%23").replace("'", "%27").replace("<", "%3C").replace(">", "%3E")
@@ -367,7 +373,7 @@ def sidebar_panel(module, ctx=None, page_title=""):
     with st.container(key="assistant_box"):
         st.markdown(
             f"<div class='adapt-ai-head'><img src='{_ROBOT_URI}' alt=''/>"
-            "<div><div class='t'>Ask ADAPT</div>"
+            "<div><div class='t'>Ask ADAPT AI</div>"
             "<div class='s'>Your guide to the tool, the methods and this community</div></div></div>",
             unsafe_allow_html=True,
         )
