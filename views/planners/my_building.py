@@ -23,7 +23,7 @@ def render(ctx):
     from adapt_core import ui as _ui
     from views.planners import building_depth as _depth
     _ui.page_header(
-        "My building",
+        "Building-level reports",
         "Pick a home or a business by its NSI id and see its flood exposure, projected damage over time, what "
         "each adaptation option would save, and water depth at the building for flood levels you choose.",
         module_key="planners", location=location_name,
@@ -109,10 +109,13 @@ def _render_damage(ctx, df_buildings, loc_entry, location_name, occupancy_label,
                     st.caption("⚠️ Please enter a numeric building ID.")
 
         with col_pick:
+            # Once the widget key holds a value, that value wins; passing a
+            # non-default index as well triggers Streamlit's "created with a
+            # default value but also had its value set" warning.
             selected_id = st.selectbox(
                 "Or pick from the list",
                 options=sorted_ids,
-                index=default_idx,
+                index=(0 if 'bldg_details_selectbox' in st.session_state else default_idx),
                 format_func=lambda x: f"Building #{x}",
                 key='bldg_details_selectbox',
             )

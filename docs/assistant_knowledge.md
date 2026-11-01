@@ -51,7 +51,7 @@ and name at the top of the sidebar returns to the landing page.
   size, a black ring around non-residential buildings, buildings with $0
   damage, the effectiveness rule (statistic and cutoff), the elevation
   cutoff, the DFE status filter, and find-by-ID.
-- My building: one building by NSI id: attributes, annual flood exposure,
+- Building-level reports: one building by NSI id: attributes, annual flood exposure,
   flood depth by year, retrofit figures, damage trajectory under both
   sea-level-rise scenarios with a side-by-side table, and flood depth tables
   for flood levels the user enters.
