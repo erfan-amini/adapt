@@ -9,9 +9,22 @@ has three modules behind a landing page:
 
 | Module | For | Pages |
 |---|---|---|
-| Households and Businesses | residents, businesses, property owners | Dynamic maps, My building |
-| Community Planning | planners, agencies, community leaders, residents | Community overview, Flood maps, Road maps, Damage distributions |
+| Households and Businesses | residents, businesses, property owners | My home (address lookup and home report with PDF), Neighborhood maps (hexagon summaries, no single home shown) |
+| Community Planning | planners, agencies, community leaders | Community overview, Dynamic maps, My building, Flood maps, Road maps, Damage distributions |
 | Developer | the project team | Data and settings, NSI survey tool, Fragility curves, Run the model |
+
+The sidebar also holds **Ask ADAPT**, a chat assistant that answers questions about the
+tool, the methods and the selected community. It needs a free API key in the secrets
+(`[assistant]`, Google AI Studio recommended); without one the panel is hidden. What it
+knows is `docs/assistant_knowledge.md`, this README, and the settings and summary
+numbers of the selected community.
+
+Address lookup (My home) geocodes the typed address with OpenStreetMap Nominatim, then
+the US Census Bureau geocoder, and snaps it to the nearest inventory building within
+40 m; the person confirms the building on an aerial photo. No key is needed. The home
+report uses the median (P50) as the expected damage and P05 to P95 as the range, and
+adds the modeled sea-level rise to present-day flood levels set per community in
+Data and settings (`flood_levels`).
 
 Access: locations flagged `protected` in `data/locations.json` (Shinnecock and Pamunkey by
 default) show their results only after the access password, on every module. The
@@ -37,11 +50,16 @@ adapt_core/
   fragility.py             FEMA/Hazus curve explorer
   ui.py                    theme, page header, cards, developer gate, location registry
   github_sync.py           publish files to the GitHub repo
+  geocode.py               address geocoding (Nominatim, US Census), FEMA flood zone lookup
+  home_report.py           the home report numbers and PDF
+  assistant.py             the Ask ADAPT chat panel (Gemini, Groq, OpenRouter, OpenAI-compatible)
 views/
   home.py                  landing page
-  community/               dynamic_maps.py, my_building.py, building_depth.py
-  planners/                overview.py, flood_maps.py, road_maps.py, distributions.py
+  community/               my_home.py, neighborhood.py
+  planners/                overview.py, dynamic_maps.py, my_building.py, building_depth.py,
+                           flood_maps.py, road_maps.py, distributions.py
   developer/               data.py, nsi_survey.py, curves.py, run_model.py
+docs/assistant_knowledge.md  what the assistant knows; edit when methods or pages change
 data/
   _curves/                 FEMA/Hazus FAST tables (shared)
   <Location>/              one folder per location (inputs + results, see below)

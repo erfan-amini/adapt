@@ -35,7 +35,7 @@ def render(ctx):
         "Interactive map of building-level flood risk. Switch the <b>Map View</b> between damage intensity, "
         "adaptation effectiveness, binned damage and <b>flood occurrences</b> (how often each building floods "
         "through a chosen horizon). Hover any building for details; click one to open it below.",
-        module_key="community", location=location_name,
+        module_key="planners", location=location_name,
     )
     ctx.render_inline_settings(["occ", "year", "scn"])
     # The map requires per-building longitude/latitude. The bundle

@@ -3,8 +3,9 @@ ADAPT - Assessment of Damage and Adaptation Planning Tool
 Center for Climate Systems Research, The Climate School, Columbia University
 
 Entry point. Three audience modules behind a landing page:
-    Households and Businesses - dynamic maps, my building
-    Community Planning        - community overview, flood maps, road maps, damage distributions
+    Households and Businesses - my home (address report), neighborhood maps
+    Community Planning        - community overview, dynamic maps, my building, flood maps,
+                                road maps, damage distributions
     Developer                 - data and settings, NSI survey tool, fragility curves, run the model
 
 The pages are registered with st.navigation before anything heavy is
@@ -31,9 +32,11 @@ st.set_page_config(
 # ---------------------------------------------------------------------------
 PAGES = [
     ("home",        None,        "Home",                  "🏠", "home",          "views.home"),
-    ("dyn_maps",    "community", "Dynamic maps",          "🗺️", "maps",          "views.community.dynamic_maps"),
-    ("my_building", "community", "My building",           "🏡", "my-building",   "views.community.my_building"),
+    ("my_home",     "community", "My home",               "🏡", "my-home",       "views.community.my_home"),
+    ("hex_maps",    "community", "Neighborhood maps",     "🔷", "neighborhood",  "views.community.neighborhood"),
     ("overview",    "planners",  "Community overview",    "📊", "overview",      "views.planners.overview"),
+    ("dyn_maps",    "planners",  "Dynamic maps",          "🗺️", "maps",          "views.planners.dynamic_maps"),
+    ("my_building", "planners",  "My building",           "🏠", "my-building",   "views.planners.my_building"),
     ("flood_maps",  "planners",  "Flood maps",            "🌊", "flood-maps",    "views.planners.flood_maps"),
     ("road_maps",   "planners",  "Road maps",             "🛣️", "road-maps",     "views.planners.road_maps"),
     ("dist",        "planners",  "Damage distributions",  "📦", "distributions", "views.planners.distributions"),
@@ -67,8 +70,7 @@ def _sidebar(module, available_locations, registry):
     from adapt_core import ui
     from views import _context as X
     with st.sidebar:
-        ui.sidebar_brand()
-        st.page_link(ST_PAGES["home"], label="Home", icon="🏠")
+        ui.sidebar_brand(ST_PAGES["home"])      # the logo and name link to the landing page
         if available_locations:
             X.location_selector(available_locations, registry, key="w_location_side")
         m = C.MODULES[module]
@@ -82,6 +84,13 @@ def _sidebar(module, available_locations, registry):
             if k != module:
                 st.page_link(ST_PAGES[FIRST_PAGE[k]], label=C.MODULES[k]["title"], icon=C.MODULES[k]["icon"])
         st.divider()
+
+
+def _sidebar_tail(module, ctx, title):
+    """Assistant panel and credit line, after the page context exists."""
+    from adapt_core import assistant
+    with st.sidebar:
+        assistant.sidebar_panel(module, ctx, title)
         st.markdown("<div class='adapt-side-note'>Center for Climate Systems Research<br>"
                     "The Climate School, Columbia University</div>", unsafe_allow_html=True)
 
@@ -115,14 +124,17 @@ def _run_page(key, module, title, fn):
     # is configured in secrets.
     cfg = ui.location_cfg(registry, location) if location else None
     if location and not ui.location_gate(location, cfg):
+        _sidebar_tail(module, None, title)
         ui.footer()
         return
     if module == "developer" and not ui.developer_gate():
+        _sidebar_tail(module, None, title)
         ui.footer()
         return
 
     ctx = X.build_context(data_store, available_locations, registry)
     ctx.pages, ctx.module, ctx.page_key, ctx.first_page = ST_PAGES, module, key, FIRST_PAGE
+    _sidebar_tail(module, ctx, title)
     fn(ctx)
     ui.footer()
 

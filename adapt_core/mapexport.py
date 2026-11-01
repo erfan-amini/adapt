@@ -53,6 +53,17 @@ _ESRI_WORLD_IMAGERY_LAYER = {
 }
 
 
+_ESRI_LIGHT_GRAY_LAYER = {
+    "below": "traces",
+    "sourcetype": "raster",
+    "sourceattribution": "Tiles © Esri",
+    "source": [
+        "https://server.arcgisonline.com/ArcGIS/rest/services/"
+        "Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}"
+    ],
+}
+
+
 def _basemap_config(name):
     """Translate a user-facing basemap label to the (style, layers) pair
     that plotly's `mapbox` layout sub-dict expects.
@@ -64,6 +75,8 @@ def _basemap_config(name):
     """
     if name == "Aerial":
         return "white-bg", [_ESRI_WORLD_IMAGERY_LAYER]
+    if name == "Light":
+        return "white-bg", [_ESRI_LIGHT_GRAY_LAYER]
     if name == "Streets":
         return "open-street-map", []
     return name, []
