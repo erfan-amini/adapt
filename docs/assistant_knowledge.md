@@ -42,7 +42,7 @@ and name at the top of the sidebar returns to the landing page.
   where elevation is needed, flood frequency, share of homes below the DFE.
 
 ### Community Planning (for planners, agencies, community leaders)
-- Community overview: community-wide damage summary and settings.
+- Community overview: three tabs. Summary (community-wide cumulative damage by strategy, under and above the DFE, trajectory over time, breakdowns, structure values), Trends (no-action damage across horizons for both sea-level rise scenarios with the P05 to P95 band, and every strategy per scenario), Damage distributions (how damage is distributed across buildings and how many buildings each measure protects).
 - Dynamic maps: building-level maps with five views. Damage bins (P90
   damage with no action in fixed bins), Adaptation effectiveness (cheapest
   measure that works for each building), Flood occurrences (how many years
@@ -61,8 +61,6 @@ and name at the top of the sidebar returns to the landing page.
   flood depth by year, retrofit figures, damage trajectory under both
   sea-level-rise scenarios with a side-by-side table, and flood depth tables
   for flood levels the user enters.
-- Damage distributions: how damage is distributed across buildings and
-  measures.
 
 ### Developer (project team)
 - Data and settings: per-community settings (BFE, elevation shortfall rule,

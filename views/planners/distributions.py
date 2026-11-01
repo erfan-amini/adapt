@@ -12,7 +12,9 @@ from adapt_core.charts import (SCENARIO_SPECS, build_box_whisker_panel)
 from adapt_core.helpers import (ZERO_THRESH_DISPLAY)
 
 
-def render(ctx):
+def render(ctx, embedded=False):
+    """The damage-distribution panels. `embedded=True` draws them inside
+    another page (the Community overview tabs): no header, no settings row."""
     _restrict_to_raise_only = ctx._restrict_to_raise_only
     df_buildings = ctx.df_buildings
     dfe_filter = ctx.dfe_filter
@@ -21,14 +23,19 @@ def render(ctx):
     occupancy_label = ctx.occupancy_label
     target_year = ctx.target_year
     from adapt_core import ui as _ui
-    _ui.page_header(
-        "Damage distributions",
-        "How cumulative damage is distributed <b>across individual buildings</b>, and how many buildings each "
-        "adaptation measure protects. Both sea-level rise scenarios are shown side by side for the selected "
-        "target year.",
-        module_key="planners", location=location_name,
-    )
-    ctx.render_inline_settings(["occ", "year", "scn"])
+    if not embedded:
+        _ui.page_header(
+            "Damage distributions",
+            "How cumulative damage is distributed <b>across individual buildings</b>, and how many buildings "
+            "each adaptation measure protects. Both sea-level rise scenarios are shown side by side for the "
+            "selected target year.",
+            module_key="planners", location=location_name,
+        )
+        ctx.render_inline_settings(["occ", "year", "scn"])
+    else:
+        st.markdown('<p class="tab-description">How cumulative damage is distributed <b>across individual '
+                    'buildings</b>, and how many buildings each adaptation measure protects. Both sea-level rise '
+                    'scenarios are shown side by side for the selected target year.</p>', unsafe_allow_html=True)
     if df_buildings is None or df_buildings.empty:
         st.warning("No per-building data available for this location.")
     else:
