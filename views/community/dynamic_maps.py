@@ -83,7 +83,7 @@ def render(ctx):
                     "**Damage heatmap**: continuous color by No-Mitigation P50 cumulative damage. "
                     "**Damage bins**: discrete bins of upper-tail damage with breakpoints fixed across years. "
                     "**Adaptation effectiveness**: classifies each building by the cheapest retrofit that "
-                    "brings its upper-tail damage below the minimal-damage cutoff. "
+                    "brings its median cumulative damage to \\$0. "
                     "**Flood occurrences**: how many times each building's first floor floods from 2025 "
                     "through the selected horizon."
                 ),
@@ -117,14 +117,11 @@ def render(ctx):
             flood_pct_key = _FP[_fp_label]
 
         # ---- Advanced options (collapsed) ----------------------------------
-        # Adaptation Effectiveness - what counts as "damage eliminated": the
-        # P90 cumulative damage at or below the cutoff. Default $20k.
-        _CUTOFF_OPTIONS = {
-            "$1k": 1000.0, "$5k": 5000.0, "$10k": 10000.0, "$20k": 20000.0, "$25k": 25000.0,
-            "$50k": 50000.0, "$100k": 100000.0,
-            "1% of structure value": ("pct", 0.01), "5% of structure value": ("pct", 0.05),
-        }
-        cutoff_label = "$20k"
+        # Adaptation Effectiveness - a measure "eliminates damage" when its
+        # MEDIAN (P50) cumulative damage through the target year is $0, the
+        # value shown in the hover. Below $0.50 counts as $0, because the
+        # hover rounds to whole dollars.
+        AE_ZERO = 0.5
         _bfe_default = (loc_entry or {}).get('bfe_ft')
         _bfe_default = float(_bfe_default) if _bfe_default is not None and pd.notna(_bfe_default) else 8.0
         elev_cutoff_ft = _bfe_default
@@ -168,47 +165,33 @@ def render(ctx):
             # Always drawn (disabled outside the Adaptation effectiveness view)
             # so the panel keeps the same layout and stays open across views.
             _ae = (map_view == "Adaptation Effectiveness")
-            if True:
-                b1, b2 = st.columns([0.55, 0.45])
-                with b1:
-                    cutoff_label = st.selectbox(
-                        "Minimal-damage cutoff (Adaptation effectiveness view)",
-                        list(_CUTOFF_OPTIONS.keys()), index=list(_CUTOFF_OPTIONS).index("$20k"),
-                        key="map_ae_cutoff_v2", disabled=not _ae,
-                        help="P90 cumulative damage at or below this counts as eliminated. A building is "
-                             "classified by the cheapest measure that brings its 90th-percentile cumulative damage "
-                             "through the target year to or below this cutoff; it is also the 'no damage' line for "
-                             "the green category.",
-                    )
-                with b2:
-                    elev_cutoff_ft = st.number_input(
-                        "Elevation eligibility cutoff (first-floor elevation, ft NAVD88)",
-                        value=float(_bfe_default), step=0.5, format="%.1f",
-                        key=f"map_ae_elev_cutoff_{location_name}", disabled=not _ae,
-                        help=f"Buildings whose first floor is at or above this elevation are not considered for "
-                             f"elevation in this view and are never colored Residual. Default = BFE "
-                             f"({_bfe_default:g} ft) = DFE - 2 ft. Set it to the DFE ({_bfe_default + 2:g} ft) to "
-                             f"include every Under-DFE building.",
-                    )
-
-            c1, c2, c3 = st.columns([1.4, 1.2, 0.8], vertical_alignment="bottom")
+            c1, c2, c3, c4 = st.columns([1.5, 0.9, 1.0, 0.8], vertical_alignment="bottom")
             with c1:
                 if fp_options:
                     ss.w_dfe = ss.cv_dfe
                     st.multiselect("DFE status filter", fp_options, key="w_dfe", on_change=_cb_dfe)
             with c2:
+                elev_cutoff_ft = st.number_input(
+                    "Elevation cutoff (ft NAVD88)",
+                    value=float(_bfe_default), step=0.5, format="%.1f",
+                    key=f"map_ae_elev_cutoff_{location_name}", disabled=not _ae,
+                    help=f"Adaptation effectiveness view only. Buildings whose first floor is at or above this "
+                         f"elevation are not considered for elevation and are never colored Residual. Default = BFE "
+                         f"({_bfe_default:g} ft) = DFE - 2 ft. Set it to the DFE ({_bfe_default + 2:g} ft) to "
+                         f"include every Under-DFE building.",
+                )
+            with c3:
                 search_id_text = st.text_input(
                     "Find building by ID", value="", key="map_search_bldg_id", placeholder="e.g. 8466717",
                     help=(f"Enter a Building ID and press Find. A magenta ring flashes on that building for "
                           f"~{int(HIGHLIGHT_TTL_SEC)} seconds, then disappears. Clear removes it at once."),
                 )
-            with c3:
+            with c4:
                 btn_a, btn_b = st.columns(2)
                 with btn_a:
                     find_clicked = st.button("🔍 Find", key="map_search_find", use_container_width=True)
                 with btn_b:
                     clear_clicked = st.button("✖ Clear", key="map_search_clear", use_container_width=True)
-        _cutoff_spec = _CUTOFF_OPTIONS[cutoff_label]
 
         # Resolve the click → session-state interaction
         import time as _time_mod
@@ -285,17 +268,16 @@ def render(ctx):
             # would expect to see:
             #   * Damage Heatmap        → P50 (what the heatmap colors)
             #   * Damage Bins           → P90 (the bins are upper-tail)
-            #   * Adaptation Effective. → P90 (categories are P90-based)
-            # In particular, for the bins/effectiveness views, hiding by
-            # P50 silently drops every building with P50 = 0 but
-            # P90 > $1k - the very buildings that drive tail-risk
-            # planning.
+            #   * Adaptation Effective. → P50 (categories are median-based)
+            # In particular, for the bins view, hiding by P50 would
+            # silently drop every building with P50 = 0 but P90 > 0 -
+            # the very buildings that drive tail-risk planning.
             if map_view == "Flood Occurrences":
                 # Flood view shows ALL buildings (a building that never
                 # floods is drawn green, not hidden), so the damage-based
                 # "$0 damage" hide filter doesn't apply here.
                 zero_filter_col = None
-            elif map_view == "Damage Heatmap":
+            elif map_view in ("Damage Heatmap", "Adaptation Effectiveness"):
                 zero_filter_col = 'No mitigation_P50' if 'No mitigation_P50' in df_map.columns else None
             else:
                 # Upper-tail view - fall back to P50 only if P90 isn't loaded
@@ -404,9 +386,10 @@ def render(ctx):
                     # buildings:
                     #   • Damage Heatmap         → P50 (median)
                     #   • Damage Bins            → P90 (upper tail)
-                    #   • Adaptation Effectiveness → P90 (upper tail)
+                    #   • Adaptation Effectiveness → P50 (median; a measure
+                    #     works when its median line below reads $0)
                     # Showing only the P50 here used to confuse users on
-                    # the P90-based views: a building with P50 = $14.6k
+                    # the P90-based view: a building with P50 = $14.6k
                     # and P90 = $250k would land in a "$100k–$500k" bin
                     # and look misclassified, because the user couldn't
                     # see the P90 value that put it there. Surface both
@@ -684,70 +667,37 @@ def render(ctx):
                     _add_highlight_ring_legend(fig_map)
 
                 # =====================================================
-                # VIEW 2 - Adaptation Effectiveness (4 categories)
-                # Ported from generate_action_animation.m
-                # Uses upper-tail (P95) cumulative damage as a proxy
-                # for the MATLAB script's P90.
+                # VIEW 2 - Adaptation Effectiveness
+                # A measure "eliminates damage" when its MEDIAN (P50)
+                # cumulative damage through the target year is $0: in
+                # more than half of the 1,000 simulated futures the building
+                # has no damage at all with that measure. This is the
+                # value each measure shows in the hover.
                 # =====================================================
                 elif map_view == "Adaptation Effectiveness":
-                    # Required columns - P90 is the upper-tail proxy
-                    # (matches the Distributions tab and the workshop
-                    # convention).
-                    #
-                    # Cheap-retrofit (yellow) bucket: the set of low-cost
-                    # retrofits that can, on their own, bring a building's
-                    # upper-tail (P90) damage to ~zero. This used to be a
-                    # single per-location column (WFP Basement in basement
-                    # inventories; Raise Utilities at Pamunkey's RES2/pier
-                    # inventory, where WFP B is dropped at the data layer).
-                    # We now consider BOTH WFP Basement AND Raise Utilities
-                    # wherever their columns are present: a building lands in
-                    # the yellow bucket if EITHER cheap retrofit eliminates
-                    # its P90 damage. This restores Raise-Utilities
-                    # effectiveness on the map in areas that are NOT mobile-
-                    # home dominated (e.g. Mastic Beach), where it was
-                    # previously ignored in favour of WFP Basement. At
-                    # Pamunkey, WFP B is absent (dropped upstream), so only
-                    # Raise Utilities contributes there - behaviour unchanged.
-                    col_nomit = 'No mitigation_P90'
-                    col_elev  = 'Elevate_P90'
-                    # Raise Utilities and WFP Basement are now SEPARATE
-                    # groups on this map (previously merged into one yellow
-                    # "cheap retrofit" bucket). Either column may be absent
-                    # for a given inventory (e.g. WFP Basement is dropped
-                    # upstream at Pamunkey's RES2/pier inventory), in which
-                    # case that group is simply empty and omitted.
-                    col_raiseu = 'Raise Utilities_P90'
-                    col_wfpb   = 'WFP B_P90'
+                    # Raise Utilities and WFP Basement are separate groups.
+                    # Either column may be absent for an inventory (WFP
+                    # Basement is dropped upstream at Pamunkey's RES2/pier
+                    # inventory), in which case that group is empty and
+                    # omitted.
+                    col_nomit  = 'No mitigation_P50'
+                    col_elev   = 'Elevate_P50'
+                    col_raiseu = 'Raise Utilities_P50'
+                    col_wfpb   = 'WFP B_P50'
                     _has_raiseu = col_raiseu in df_map.columns
                     _has_wfpb   = col_wfpb   in df_map.columns
-                    _cheap_present = [(c, lbl) for c, lbl in (
-                        (col_raiseu, 'Raise Utilities'),
-                        (col_wfpb,   'WFP Basement'),
-                    ) if c in df_map.columns]
-                    _cheap_available = bool(_cheap_present)
 
-                    # No mitigation + Elevate are hard-required; the cheap
-                    # retrofit (yellow bucket) is optional. When neither cheap
-                    # column is present - e.g. an inventory that is entirely
-                    # RES2 manufactured housing, where Raise Utilities was
-                    # dropped at the data layer - the yellow bucket is simply
-                    # skipped rather than erroring the whole view.
+                    # No mitigation + Elevate are required; the cheap
+                    # retrofits are optional.
                     _core_cols = (col_nomit, col_elev)
                     missing = [c for c in _core_cols if c not in df_map.columns]
                     if missing:
                         st.warning(
-                            "This view needs P90 columns for No mitigation and "
+                            "This view needs median (P50) columns for No mitigation and "
                             f"Elevate. Missing: {', '.join(missing)}"
                         )
                     else:
-                        if isinstance(_cutoff_spec, tuple):
-                            _sv = pd.to_numeric(df_map.get('structure_value'), errors='coerce') \
-                                if 'structure_value' in df_map.columns else pd.Series(np.nan, index=df_map.index)
-                            thr = np.where(np.isfinite(_sv.values.astype(float)),
-                                           _sv.values.astype(float) * _cutoff_spec[1], ZERO_THRESH_DISPLAY)
-                        else:
-                            thr = float(_cutoff_spec)   # legacy default: $1k counts as zero
+                        thr = AE_ZERO   # median at or below this reads $0 in the hover
 
                         # Preserve NaN so missing retrofit values don't silently
                         # count as effective (fillna(0) would do that).
@@ -757,7 +707,7 @@ def render(ctx):
                         no_mit = np.where(np.isnan(no_mit_raw), 0.0, no_mit_raw)
                         elev   = np.where(np.isnan(elev_raw), no_mit, elev_raw)
 
-                        # Per-retrofit "brings P90 to <= thr" masks, computed
+                        # Per-retrofit "brings the median to $0" masks, computed
                         # SEPARATELY for Raise Utilities and WFP Basement so
                         # each gets its own group. NaN in a retrofit column
                         # ==> "retrofit not applied" ==> baseline (so a
@@ -774,28 +724,27 @@ def render(ctx):
 
                         # --- MAP classifier (threshold rule) ---
                         # Five buckets ordered by the cheapest adaptation
-                        # that brings upper-tail damage below the $1k
-                        # "no damage" threshold. Reading the colors top
+                        # that brings the median damage to $0. Reading the colors top
                         # to bottom gives a decision pyramid: do nothing →
                         # cheap retrofit → expensive retrofit (elevation) →
                         # nothing works.
                         #
-                        #   1 = No Damage        baseline P90 <= thr
+                        #   1 = No Damage        baseline median = $0
                         #   2 = Raise Utilities   baseline > thr AND Raise
-                        #                         Utilities brings P90 <= thr
+                        #                         Utilities brings the median to $0
                         #   3 = WFP Basement      baseline > thr, Raise Utilities
                         #                         doesn't reach thr, but WFP
-                        #                         Basement brings P90 <= thr
+                        #                         Basement brings the median to $0
                         #   4 = Elevation         baseline > thr, neither cheap
                         #                         retrofit reaches thr, but
-                        #                         elevation brings P90 <= thr
+                        #                         elevation brings the median to $0
                         #   5 = Residual          Damaged, still Under-DFE AND
                         #                         below BFE, and even ELEVATION
-                        #                         cannot bring P90 to zero
-                        #                         (<= thr). Defined purely on
+                        #                         cannot bring the median to
+                        #                         $0. Defined purely on
                         #                         elevation: homes that raising
                         #                         still can't bring to zero at
-                        #                         the P90 upper-tail level.
+                        #                         the median.
                         #                         Homes at or above BFE are
                         #                         excluded (already reasonably
                         #                         protected) even inside the
@@ -885,8 +834,8 @@ def render(ctx):
                         if _n_gap > 0:
                             ae_gap_note = (
                                 f" **{_n_gap:,} damaged Under-DFE buildings are not drawn**: their first floor is at or "
-                                f"above the elevation eligibility cutoff ({float(elev_cutoff_ft):g} ft) and no cheaper "
-                                "measure eliminates their damage."
+                                f"above the elevation cutoff ({float(elev_cutoff_ft):g} ft) and no cheaper "
+                                "measure brings their median damage to \\$0."
                             )
                             if _n_noelev > 0:
                                 ae_gap_note += (
@@ -1431,30 +1380,28 @@ def render(ctx):
                         "damage." + cap_note
                     )
                 elif map_view == "Adaptation Effectiveness":
-                    _cut_txt = cutoff_label.replace("$", "\\$")   # escape $ so markdown does not start math mode
                     if mobile_raise_only:
                         st.caption(
                             "🏠 **Mobile-homes-dominated area:** only **raising (elevating) homes** "
-                            "is considered. Each building is colored by whether raising it eliminates "
-                            "its upper-tail (P90) cumulative damage under the selected year and SLR "
-                            f"scenario: **No Damage** (baseline P90 \u2264 {_cut_txt} - no intervention needed) \u2192 "
-                            f"**Elevation** (raising the home brings P90 \u2264 {_cut_txt}) \u2192 **Residual Damage** "
-                            f"(Under-DFE homes **below BFE** where even raising the home leaves P90 above {_cut_txt} - "
-                            "the conversation has to move beyond retrofits, to buyout, relocation, or "
-                            "community-scale interventions). Homes at or above BFE are never colored "
-                            "Residual. Above-DFE buildings not eliminated by "
-                            "raising are not plotted. Non-residential buildings are marked with a "
-                            "black ring. Uncheck the sidebar option to compare all retrofits." + ae_gap_note
+                            "is considered. A measure counts as effective when its **median** cumulative damage "
+                            "through the selected year is **\\$0**, the value shown in the hover: in more than half "
+                            "of the 1,000 simulated futures the home has no damage at all. "
+                            "**No Damage** (median \\$0 with no action) \u2192 **Elevation** (raising the home "
+                            "brings the median to \\$0) \u2192 **Residual Damage** (Under-DFE homes below the "
+                            "elevation cutoff where the median stays above \\$0 even after raising; the "
+                            "conversation moves to buyout, relocation, or community-scale measures). "
+                            "Above-DFE buildings not cleared by raising are not plotted. Green homes can still "
+                            "flood in the worse futures: the hover shows their P90." + ae_gap_note
                         )
                     else:
                         st.caption(
-                            "Each building is colored by the **cheapest measure that brings** "
-                            f"its P90 cumulative damage **to or below {_cut_txt}**, in priority order: "
-                            "**No Damage** \u2192 **Raise Utilities** \u2192 **WFP Basement** \u2192 "
-                            "**Elevation** \u2192 **Residual Damage** (Under-DFE, below BFE, and even "
-                            f"elevation leaves more than {_cut_txt}). Homes at or above BFE, and Above-DFE "
-                            "homes, are never colored Residual. Tick 'Ring non-residential' to mark "
-                            "non-residential buildings with a black ring." + ae_gap_note
+                            "Each building is colored by the **cheapest measure that brings its median "
+                            "cumulative damage to \\$0** through the selected year, the value shown for that "
+                            "measure in the hover. Median \\$0 means no damage at all in more than half of the "
+                            "1,000 simulated futures. Priority order: **No Damage** \u2192 **Raise Utilities** "
+                            "\u2192 **WFP Basement** \u2192 **Elevation** \u2192 **Residual Damage** (Under-DFE, "
+                            "below the elevation cutoff, and the median stays above \\$0 even after elevation). "
+                            "Green buildings can still flood in the worse futures: the hover shows their P90." + ae_gap_note
                         )
                 elif map_view == "Damage Bins":
                     st.caption(
