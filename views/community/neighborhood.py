@@ -2,7 +2,8 @@
 
 Flood risk summarized by hexagon, so residents can see how risk varies
 across the community without reading any single building off the map.
-Hexagons with fewer than HEX_MIN_BUILDINGS buildings are not drawn.
+Hexagons with fewer than HEX_MIN_BUILDINGS buildings are not drawn, and the
+number of buildings in a hexagon is never shown.
 """
 import math
 
@@ -144,14 +145,14 @@ def _hex_figure(d, vals, nx, metric_label, kind, scale, style, layers):
             geojson=geojson, locations=np.asarray(ids)[~ok], z=np.zeros(int((~ok).sum())),
             colorscale=[[0, "#e2e8f0"], [1, "#e2e8f0"]], showscale=False, marker_opacity=0.55,
             marker_line=dict(color="rgba(255,255,255,0.7)", width=0.8),
-            customdata=counts[~ok], hovertemplate="No damaged buildings here<br>%{customdata:.0f} buildings<extra></extra>",
+            hovertemplate="No damaged buildings here<extra></extra>",
             name="n/a"))
     fig.add_trace(go.Choroplethmapbox(
         geojson=geojson, locations=np.asarray(ids)[ok], z=z[ok], colorscale=scale,
         zmin=0 if kind != "money" else None, zmax=100 if kind == "pct" else None,
         marker_opacity=0.74, marker_line=dict(color="rgba(255,255,255,0.7)", width=0.8),
-        customdata=np.c_[counts[ok], np.array(hover, dtype=object)[ok]],
-        hovertemplate=f"<b>{metric_label}</b>: %{{customdata[1]}}<br>%{{customdata[0]:.0f}} buildings<extra></extra>",
+        customdata=np.array(hover, dtype=object)[ok],
+        hovertemplate=f"<b>{metric_label}</b>: %{{customdata}}<extra></extra>",
         colorbar=dict(title=dict(text=("%" if kind == "pct" else "$" if kind == "money" else "years"), side="right"),
                       thickness=14, len=0.6, x=0.99, tickprefix="$" if kind == "money" else None,
                       separatethousands=True),
@@ -169,9 +170,9 @@ def render(ctx):
     location_name = ctx.location_name
     ui.page_header(
         "Neighborhood maps",
-        "How flood risk varies across the community, summarized by hexagon. Each hexagon combines at least "
-        f"{C.HEX_MIN_BUILDINGS} buildings, so the map shows neighborhoods, not individual homes. For your own "
-        "home, use <b>My home</b>.",
+        "How flood risk varies across the community, summarized by hexagon. Each hexagon combines several "
+        "buildings, so the map shows neighborhoods, not individual homes. For your own home, use "
+        "<b>My home</b>.",
         module_key="community", location=location_name,
     )
     ctx.render_inline_settings(["occ", "year", "scn"])
@@ -228,10 +229,8 @@ def render(ctx):
         return
     fig, z, counts = _hex_figure(d, vals, nx, metric_label, kind, m["scale"], style, layers)
     st.plotly_chart(fig, use_container_width=True, config={"scrollZoom": True})
-    shown = int(len(z))
     st.caption(
-        f"{metric_label}: {m['help']} Hexagons are about {size_m} m across; {shown} hexagons with "
-        f"{C.HEX_MIN_BUILDINGS} or more buildings are drawn (gray = no damaged buildings) for {ctx.target_year}, "
-        f"{'median' if ctx.scenario == '50th-percentile' else 'high'} sea-level rise. Hover a hexagon for its "
-        "value and building count."
+        f"{metric_label}: {m['help']} Hexagons are about {size_m} m across (gray = no damaged buildings); "
+        f"{ctx.target_year}, {'median' if ctx.scenario == '50th-percentile' else 'high'} sea-level rise. "
+        "Hover a hexagon for its value."
     )

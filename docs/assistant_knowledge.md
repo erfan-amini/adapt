@@ -36,15 +36,15 @@ and name at the top of the sidebar returns to the landing page.
   horizons), with a PDF download. One home at a time; the address is not
   stored.
 - Neighborhood maps: flood risk summarized by hexagon (about 160 m across by
-  default, adjustable). Hexagons with fewer than 3 buildings are hidden so
-  no single home can be read off the map. Measures: share of homes with
+  default, adjustable). Hexagons with fewer than 2 buildings are hidden so
+  no single home can be read off the map; the number of buildings in a hexagon is not shown. Measures: share of homes with
   expected damage, expected damage per home, where a low-cost fix is enough,
   where elevation is needed, flood frequency, share of homes below the DFE.
 
 ### Community Planning (for planners, agencies, community leaders)
 - Community overview: community-wide damage summary and settings.
-- Dynamic maps: building-level maps with four views. Damage heatmap (median
-  damage with no action), Damage bins (P90 damage in fixed bins),
+- Dynamic maps: building-level maps with three views. Damage bins (P90
+  damage with no action in fixed bins),
   Adaptation effectiveness (cheapest measure that works for each building),
   Flood occurrences (how many years the first floor floods through the
   horizon). Advanced options hold the basemap (Streets or Aerial), point

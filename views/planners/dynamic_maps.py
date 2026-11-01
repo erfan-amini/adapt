@@ -32,9 +32,9 @@ def render(ctx):
     from adapt_core import ui as _ui
     _ui.page_header(
         "Dynamic maps",
-        "Interactive map of building-level flood risk. Switch the <b>Map View</b> between damage intensity, "
-        "adaptation effectiveness, binned damage and <b>flood occurrences</b> (how often each building floods "
-        "through a chosen horizon). Hover any building for details; click one to open it below.",
+        "Interactive map of building-level flood risk. Switch the <b>Map View</b> between binned damage, "
+        "adaptation effectiveness and <b>flood occurrences</b> (how often each building floods through a chosen "
+        "horizon). Hover any building for details; click one to open it below.",
         module_key="planners", location=location_name,
     )
     ctx.render_inline_settings(["occ", "year", "scn"])
@@ -59,7 +59,6 @@ def render(ctx):
 
         # ---- Map view: one row of segmented buttons -------------------------
         _VIEW_ICONS = {
-            "Damage Heatmap": "🔥 Damage heatmap",
             "Damage Bins": "📊 Damage bins",
             "Adaptation Effectiveness": "🛡️ Adaptation effectiveness",
             "Flood Occurrences": "🌊 Flood occurrences",
@@ -76,12 +75,11 @@ def render(ctx):
         with ctx._keyed_container("map_view_row"):
             _mv = st.segmented_control(
                 "Map view", options=list(_VIEW_ICONS), format_func=lambda v: _VIEW_ICONS[v],
-                default="Damage Heatmap", selection_mode="single",
+                default="Damage Bins", selection_mode="single",
                 key="map_view_seg", label_visibility="collapsed",
-                on_change=_keep_selection, args=("map_view_seg", "_map_view_last", "Damage Heatmap"),
+                on_change=_keep_selection, args=("map_view_seg", "_map_view_last", "Damage Bins"),
                 help=(
-                    "**Damage heatmap**: continuous color by No-Mitigation P50 cumulative damage. "
-                    "**Damage bins**: discrete bins of upper-tail damage with breakpoints fixed across years. "
+                    "**Damage bins**: discrete bins of upper-tail (P90) damage with breakpoints fixed across years. "
                     "**Adaptation effectiveness**: classifies each building by the cheapest retrofit that "
                     "brings its P90 (or median) cumulative damage below a cutoff you choose. "
                     "**Flood occurrences**: how many times each building's first floor floods from 2025 "
@@ -89,7 +87,9 @@ def render(ctx):
                 ),
             )
         # Clicking the active segment deselects it; keep the last view instead.
-        map_view = _mv or ss.get("_map_view_last", "Damage Heatmap")
+        map_view = _mv or ss.get("_map_view_last", "Damage Bins")
+        if map_view not in _VIEW_ICONS:          # a view removed from the menu (older session state)
+            map_view = "Damage Bins"
         ss["_map_view_last"] = map_view
 
         # Flood Occurrences view - which statistic of the per-building MC
