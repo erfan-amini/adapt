@@ -277,7 +277,15 @@ _USER_URI = "data:image/svg+xml;utf8," + _USER_SVG.replace("#", "%23").replace("
 _PANEL_CSS = """
 <style>
 .st-key-assistant_box { background: linear-gradient(180deg, rgba(56,189,248,0.10), rgba(255,255,255,0.03));
-  border: 1px solid rgba(125,211,252,0.28); border-radius: 16px; padding: 0.75rem 0.7rem 0.6rem 0.7rem; }
+  border: 1px solid rgba(125,211,252,0.28); border-radius: 16px; padding: 0.75rem 0.7rem 0.6rem 0.7rem;
+  box-sizing: border-box; overflow: hidden; }
+/* Streamlit gives every element a pixel width equal to the sidebar; inside a
+   padded panel that overflows, so size them to the panel's content box */
+.st-key-assistant_box [data-testid="stElementContainer"], .st-key-assistant_box [data-testid="stElementContainer"] > div,
+.st-key-assistant_box [data-testid="stChatMessage"], .st-key-assistant_box [data-testid="stChatInput"],
+.st-key-assistant_box [data-testid="stButton"], .st-key-assistant_box [data-testid="stMarkdown"],
+.st-key-assistant_box [data-testid="stVerticalBlockBorderWrapper"], .st-key-assistant_box [data-testid="stVerticalBlock"] {
+  width: 100% !important; max-width: 100% !important; min-width: 0 !important; }
 .st-key-assistant_box .adapt-ai-head { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.45rem; }
 .st-key-assistant_box .adapt-ai-head img { width: 38px; height: 38px; flex: 0 0 38px; filter: drop-shadow(0 4px 10px rgba(56,189,248,0.35)); }
 .st-key-assistant_box .adapt-ai-head .t { font-weight: 800; color: #f8fafc !important; font-size: 0.98rem; letter-spacing: 0.02em; line-height: 1.1; }
@@ -301,6 +309,8 @@ _PANEL_CSS = """
 .st-key-assistant_box [data-testid="stChatMessageAvatarUser"], .st-key-assistant_box [data-testid="stChatMessageAvatarAssistant"],
 .st-key-assistant_box [data-testid="stChatMessage"] img { width: 26px !important; height: 26px !important; border-radius: 50%; }
 .st-key-assistant_box [data-testid="stChatInput"] { border-radius: 12px; }
+.st-key-assistant_box [data-testid="stChatInput"] > div { width: 100% !important; max-width: 100% !important; }
+.st-key-assistant_box [data-testid="stChatInputTextArea"] { width: 100% !important; }
 .st-key-assistant_box [data-testid="stChatInput"] textarea { font-size: 0.82rem; }
 .st-key-assistant_box [data-testid="stVerticalBlock"] { gap: 0.35rem; }
 </style>
