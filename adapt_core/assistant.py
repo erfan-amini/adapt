@@ -254,8 +254,61 @@ def ask(cfg, system, history, question):
 # ---------------------------------------------------------------------------
 # Sidebar panel
 # ---------------------------------------------------------------------------
+# A small robot mark for the header and the assistant's avatar (inline SVG).
+_ROBOT_SVG = (
+    "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'>"
+    "<defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'>"
+    "<stop offset='0' stop-color='#38bdf8'/><stop offset='1' stop-color='#14b8a6'/></linearGradient></defs>"
+    "<circle cx='32' cy='32' r='32' fill='url(#g)'/>"
+    "<rect x='17' y='22' width='30' height='24' rx='8' fill='#0f172a'/>"
+    "<rect x='29' y='12' width='6' height='8' rx='3' fill='#0f172a'/><circle cx='32' cy='11' r='4' fill='#0f172a'/>"
+    "<circle cx='26' cy='33' r='4' fill='#7dd3fc'/><circle cx='38' cy='33' r='4' fill='#7dd3fc'/>"
+    "<rect x='25' y='40' width='14' height='3' rx='1.5' fill='#7dd3fc'/>"
+    "<rect x='11' y='29' width='5' height='10' rx='2.5' fill='#0f172a'/><rect x='48' y='29' width='5' height='10' rx='2.5' fill='#0f172a'/>"
+    "</svg>"
+)
+_ROBOT_URI = "data:image/svg+xml;utf8," + _ROBOT_SVG.replace("#", "%23").replace("'", "%27").replace("<", "%3C").replace(">", "%3E")
+_USER_SVG = (
+    "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><circle cx='32' cy='32' r='32' fill='#334155'/>"
+    "<circle cx='32' cy='25' r='10' fill='#cbd5e1'/><path d='M14 54c2-11 9-16 18-16s16 5 18 16z' fill='#cbd5e1'/></svg>"
+)
+_USER_URI = "data:image/svg+xml;utf8," + _USER_SVG.replace("#", "%23").replace("'", "%27").replace("<", "%3C").replace(">", "%3E")
+
+_PANEL_CSS = """
+<style>
+.st-key-assistant_box { background: linear-gradient(180deg, rgba(56,189,248,0.10), rgba(255,255,255,0.03));
+  border: 1px solid rgba(125,211,252,0.28); border-radius: 16px; padding: 0.75rem 0.7rem 0.6rem 0.7rem; }
+.st-key-assistant_box .adapt-ai-head { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.45rem; }
+.st-key-assistant_box .adapt-ai-head img { width: 38px; height: 38px; flex: 0 0 38px; filter: drop-shadow(0 4px 10px rgba(56,189,248,0.35)); }
+.st-key-assistant_box .adapt-ai-head .t { font-weight: 800; color: #f8fafc !important; font-size: 0.98rem; letter-spacing: 0.02em; line-height: 1.1; }
+.st-key-assistant_box .adapt-ai-head .s { font-size: 0.7rem; color: #94a3b8 !important; line-height: 1.25; margin-top: 2px; }
+.st-key-assistant_box .adapt-ai-hint { font-size: 0.72rem; color: #94a3b8 !important; margin: 0 0 0.35rem 0; }
+/* suggested questions as chips that wrap inside the sidebar */
+.st-key-assistant_box [data-testid="stButton"] button {
+  width: 100%; min-height: 0; height: auto; padding: 0.38rem 0.6rem; border-radius: 11px; text-align: left;
+  background: rgba(15,23,42,0.45); border: 1px solid rgba(125,211,252,0.35); color: #e0f2fe !important;
+  white-space: normal !important; line-height: 1.25; box-shadow: none; }
+.st-key-assistant_box [data-testid="stButton"] button:hover { background: rgba(56,189,248,0.18); border-color: #7dd3fc; }
+.st-key-assistant_box [data-testid="stButton"] button p { font-size: 0.78rem !important; white-space: normal !important;
+  text-align: left; color: #e0f2fe !important; margin: 0; }
+.st-key-assistant_clear button { background: none !important; border: none !important; }
+.st-key-assistant_clear button p { color: #94a3b8 !important; font-size: 0.72rem !important; text-align: center !important; }
+/* messages */
+.st-key-assistant_box [data-testid="stChatMessage"] { background: rgba(255,255,255,0.06); border-radius: 12px;
+  padding: 0.45rem 0.55rem; gap: 0.45rem; margin: 0.15rem 0; }
+.st-key-assistant_box [data-testid="stChatMessage"] p, .st-key-assistant_box [data-testid="stChatMessage"] li {
+  font-size: 0.82rem !important; line-height: 1.4; color: #e2e8f0 !important; }
+.st-key-assistant_box [data-testid="stChatMessageAvatarUser"], .st-key-assistant_box [data-testid="stChatMessageAvatarAssistant"],
+.st-key-assistant_box [data-testid="stChatMessage"] img { width: 26px !important; height: 26px !important; border-radius: 50%; }
+.st-key-assistant_box [data-testid="stChatInput"] { border-radius: 12px; }
+.st-key-assistant_box [data-testid="stChatInput"] textarea { font-size: 0.82rem; }
+.st-key-assistant_box [data-testid="stVerticalBlock"] { gap: 0.35rem; }
+</style>
+"""
+
+
 def sidebar_panel(module, ctx=None, page_title=""):
-    """Chat panel at the bottom of the sidebar."""
+    """The Ask ADAPT panel: always on, at the bottom of the sidebar."""
     ss = st.session_state
     cfg = settings()
     if cfg is None:
@@ -265,21 +318,24 @@ def sidebar_panel(module, ctx=None, page_title=""):
                         "(see .streamlit/secrets.toml.example).</div>", unsafe_allow_html=True)
             st.divider()
         return
-    on = st.toggle("💬 Ask ADAPT", key="assistant_on", help="Ask about the tool, the methods, or this community.")
-    if not on:
-        st.divider()
-        return
     hist = ss.setdefault("assistant_history", [])
+    st.markdown(_PANEL_CSS, unsafe_allow_html=True)
     with st.container(key="assistant_box"):
+        st.markdown(
+            f"<div class='adapt-ai-head'><img src='{_ROBOT_URI}' alt=''/>"
+            "<div><div class='t'>Ask ADAPT</div>"
+            "<div class='s'>Your guide to the tool, the methods and this community</div></div></div>",
+            unsafe_allow_html=True,
+        )
         if not hist:
-            st.markdown("<div class='adapt-side-note'>Ask anything about the tool or the selected community.</div>",
+            st.markdown("<div class='adapt-ai-hint'>Try one of these, or type your own question.</div>",
                         unsafe_allow_html=True)
             for q in SUGGESTED:
                 if st.button(q, key=f"assistant_sugg_{abs(hash(q))}", use_container_width=True):
                     ss["assistant_pending"] = q
         for role, text in hist[-2 * MAX_TURNS:]:
             with st.chat_message("user" if role == "user" else "assistant",
-                                 avatar="🧑" if role == "user" else "🌊"):
+                                 avatar=_USER_URI if role == "user" else _ROBOT_URI):
                 st.markdown(text)
         q = st.chat_input("Ask a question", key="assistant_input")
         if q:
@@ -290,9 +346,9 @@ def sidebar_panel(module, ctx=None, page_title=""):
             wait = MIN_SECONDS_BETWEEN - (time.time() - last)
             if wait > 0:
                 time.sleep(wait)
-            with st.chat_message("user", avatar="🧑"):
+            with st.chat_message("user", avatar=_USER_URI):
                 st.markdown(pending)
-            with st.chat_message("assistant", avatar="🌊"):
+            with st.chat_message("assistant", avatar=_ROBOT_URI):
                 with st.spinner("Thinking..."):
                     try:
                         answer = ask(cfg, system_prompt(ctx, module, page_title), hist[-2 * MAX_TURNS:], pending)
@@ -303,7 +359,7 @@ def sidebar_panel(module, ctx=None, page_title=""):
             hist.extend([("user", pending), ("assistant", answer)])
             del hist[:-2 * MAX_TURNS]
             st.rerun()          # redraw with the new exchange in the history, above the input
-        if hist and st.button("Clear conversation", key="assistant_clear", use_container_width=True):
+        if hist and st.button("↺ Start a new conversation", key="assistant_clear", use_container_width=True):
             ss["assistant_history"] = []
             st.rerun()
     st.divider()
