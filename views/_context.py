@@ -206,6 +206,13 @@ def build_context(data_store, available_locations, registry):
     def _scn_fmt_short(x):
         return C.SCENARIO_SHORT.get(x, _scn_fmt(x))
 
+    def render_occupancy(label="Occupancy", help=None):
+        """The occupancy selector on its own (the Dynamic maps Advanced
+        options panel). It drives the same cv_occ as everywhere else."""
+        ss.w_occ = ss.cv_occ
+        st.selectbox(label, ["All", "Residential", "Non-Residential"],
+                     key="w_occ", on_change=_cb_occ, format_func=_occ_fmt, help=help)
+
     def render_sidebar_settings(slots):
         """The same settings in the sidebar grid: `slots` maps "occ", "year"
         and "scn" to the half-width containers made in app._sidebar. Labels
@@ -278,7 +285,7 @@ def build_context(data_store, available_locations, registry):
         mobile_raise_only=mobile_raise_only, _restrict_to_raise_only=_restrict_to_raise_only,
         _RAISE_ONLY_ACTIONS=_RAISE_ONLY_ACTIONS, _format_target_year=_format_target_year,
         _scn_fmt=_scn_fmt, _occ_fmt=_occ_fmt, render_inline_settings=render_inline_settings,
-        render_sidebar_settings=render_sidebar_settings,
+        render_sidebar_settings=render_sidebar_settings, render_occupancy=render_occupancy,
         _keyed_container=_keyed_container, target_year_labels=target_year_labels,
         BASELINE_YEAR_TO_DROP=BASELINE_YEAR_TO_DROP, render_fragility_curves=render_fragility_curves,
         _location_blurb=_location_blurb, _cb_dfe=_cb_dfe, _cb_zero=_cb_zero,

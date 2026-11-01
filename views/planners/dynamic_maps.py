@@ -280,7 +280,14 @@ def render(ctx):
                                                key="map_road_entry_xy", placeholder="e.g. 40.7650, -72.8450")
 
             st.markdown("<div class='adapt-adv-label'>Filters and search</div>", unsafe_allow_html=True)
-            c1, c2, c3 = st.columns([1.4, 1.2, 0.8], vertical_alignment="bottom")
+            c0, c1, c2, c3 = st.columns([0.85, 1.75, 1.0, 0.8], vertical_alignment="bottom")
+            with c0:
+                # Occupancy is set here for the whole Community Planning
+                # module (the overview and building pages follow it and show
+                # it in their subheaders).
+                ctx.render_occupancy("Occupancy", help="Which buildings the maps, the community overview and the "
+                                                       "building reports include. Applies to all Community "
+                                                       "Planning pages.")
             with c1:
                 if fp_options:
                     ss.w_dfe = ss.cv_dfe
