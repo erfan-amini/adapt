@@ -50,13 +50,18 @@ LOCATION_DEFAULTS = {
                         "shoreline erosion expose homes, roads and cultural sites to more frequent flooding.")},
     "MasticBeach": {"name": "Mastic Beach", "bfe_ft": 8.0, "elev_min_shortfall_ft": 0.0,
                     "restrict_manuf": False, "mobile_homes_dominated": False, "protected": False,
-                    "state": "NY", "blurb": (
+                    "state": "NY",
+                    # Present-day flood levels (ft NAVD88) used by the home report.
+                    "flood_levels": {"monthly_ft": 3.7, "pct10_ft": 5.7, "pct1_ft": 8.5},
+                    "blurb": (
                         "Mastic Beach is a low-lying bayfront community on the south shore of Long Island, "
                         "New York, facing Moriches Bay. Thousands of homes sit within a few feet of the "
                         "tide line, so tidal flooding and storm surge already reach streets and yards.")},
     "Pamunkey":    {"name": "Pamunkey", "bfe_ft": 7.0, "elev_min_shortfall_ft": 0.0,
                     "restrict_manuf": True, "mobile_homes_dominated": True, "protected": True,
-                    "state": "VA", "blurb": (
+                    "state": "VA",
+                    "flood_levels": {"mhhw_ft": 2.37, "pct10_ft": 5.78, "pct1_ft": 7.38},
+                    "blurb": (
                         "The Pamunkey Indian Reservation sits on a low-lying 1,600-acre peninsula on a bend "
                         "of the Pamunkey River near West Point, Virginia, ringed by river and tidal marsh on "
                         "three sides. It faces tidal and storm flooding, stormwater and land subsidence, with "
@@ -64,20 +69,30 @@ LOCATION_DEFAULTS = {
 }
 
 # ---------------------------------------------------------------------------
+# Home report (Households and Businesses > My home)
+# ---------------------------------------------------------------------------
+REPORT_CONTACT = "Erfan Amini (ea3246@columbia.edu)"
+REPORT_HORIZON_YEARS = (2040, 2055)        # used when the results include them
+ADDRESS_SNAP_M = 40.0                       # max distance from the geocoded point to a building
+ADDRESS_CANDIDATES_M = 60.0                 # other buildings offered when the nearest is not certain
+HEX_MIN_BUILDINGS = 10                      # neighborhood maps: hexagons with fewer buildings are hidden
+HEX_DEFAULT_SIZE_M = 160                    # hexagon width (flat to flat), metres
+
+# ---------------------------------------------------------------------------
 # Modules (audience-facing sections of the app)
 # ---------------------------------------------------------------------------
 MODULES = {
     "community": {
         "title": "Households and Businesses",
-        "subtitle": "Flood risk and adaptation options for one building",
+        "subtitle": "A report for your home, and neighborhood flood-risk maps",
         "icon": "🏠",
         "accent": "#0ea5e9",
-        "blurb": ("See which buildings flood, how often, and what each adaptation option "
-                  "would do for a home or business like yours."),
+        "blurb": ("Enter your address for a flood damage and adaptation report for your home, "
+                  "and see how risk varies across neighborhoods."),
     },
     "planners": {
         "title": "Community Planning",
-        "subtitle": "Community-wide damage, flood and road maps",
+        "subtitle": "Building-level maps, damage, flood and road analysis",
         "icon": "🏛️",
         "accent": "#14b8a6",
         "blurb": ("Community-wide damage, flood and road maps under sea-level rise, and how "

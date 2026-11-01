@@ -71,7 +71,7 @@ def render(ctx):
         f".st-key-go_{k}:hover .adapt-module {{ border-color: {m['accent']}; }}" for k, m in C.MODULES.items()
     ) + "</style>", unsafe_allow_html=True)
     # Developer is the narrow card; the two public modules share the rest equally.
-    cols = st.columns([1, 1, 0.56], gap="medium")
+    cols = st.columns([1, 1, 0.44], gap="medium")
     for col, (key, m) in zip(cols, C.MODULES.items()):
         with col:
             with ctx._keyed_container(f"go_{key}"):

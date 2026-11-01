@@ -259,11 +259,21 @@ def render(ctx):
                                     "falls back to the project's long-standing password.")
         blurb = st.text_area("Short description shown on the Home and Overview pages", value=cfg.get("blurb", ""),
                              height=90)
+        st.markdown("**Present-day flood levels for the home report** (ft NAVD88; leave 0 to omit a row). "
+                    "The report adds the modeled sea-level rise to these for each horizon.")
+        _fl = cfg.get("flood_levels") or {}
+        h1, h2, h3, h4 = st.columns(4)
+        fl_mhhw = h1.number_input("High tide (MHHW)", value=float(_fl.get("mhhw_ft") or 0.0), step=0.1, format="%.2f")
+        fl_month = h2.number_input("Monthly flood", value=float(_fl.get("monthly_ft") or 0.0), step=0.1, format="%.2f")
+        fl_ten = h3.number_input("10% annual chance flood", value=float(_fl.get("pct10_ft") or 0.0), step=0.1, format="%.2f")
+        fl_one = h4.number_input("1% annual chance flood", value=float(_fl.get("pct1_ft") or 0.0), step=0.1, format="%.2f")
         saved = st.form_submit_button("Save settings", type="primary")
     if saved:
+        _levels = {k: float(v) for k, v in (("mhhw_ft", fl_mhhw), ("monthly_ft", fl_month),
+                                            ("pct10_ft", fl_ten), ("pct1_ft", fl_one)) if float(v) > 0}
         reg[slug] = {**cfg, "name": name.strip() or slug, "bfe_ft": float(bfe), "elev_min_shortfall_ft": float(short),
                      "state": state.strip(), "mobile_homes_dominated": bool(mobile), "restrict_manuf": bool(restrict),
-                     "protected": bool(protected), "blurb": blurb.strip()}
+                     "protected": bool(protected), "blurb": blurb.strip(), "flood_levels": _levels}
         ui.save_location_registry(reg)
         st.success("Settings saved to data/locations.json. They apply to the next model run.")
 

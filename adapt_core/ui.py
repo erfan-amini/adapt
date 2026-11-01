@@ -126,6 +126,15 @@ section[data-testid="stSidebar"] [data-testid="stPageLink-NavLink"] p { color: #
 .adapt-brand-row .tile img { width: 42px; height: 42px; object-fit: contain; }
 .adapt-brand-row .word { font-size: 1.45rem; font-weight: 800; letter-spacing: 0.06em; color: #ffffff !important; line-height: 1; }
 .adapt-brand-row .sub { font-size: 0.66rem; color: #94a3b8 !important; line-height: 1.3; margin-top: 4px; }
+.st-key-go_home { border-radius: 14px; transition: background .15s ease; }
+section[data-testid="stSidebar"] .st-key-go_home [data-testid="stPageLink"] div { height: 100%% !important; min-height: 100%% !important; }
+section[data-testid="stSidebar"] .st-key-go_home [data-testid="stPageLink"] a,
+section[data-testid="stSidebar"] .st-key-go_home [data-testid="stPageLink-NavLink"] {
+    display: block; height: 100%% !important; min-height: 100%% !important; width: 100%% !important; padding: 0; margin: 0;
+    opacity: 0; transform: none; background: none;
+}
+.st-key-go_home:hover { background: rgba(255,255,255,0.06); }
+.st-key-go_home .adapt-brand-row { cursor: pointer; }
 .adapt-module-tag {
     display: inline-flex; align-items: center; gap: 6px; margin: 0.4rem 0 0.4rem 0;
     padding: 0.28rem 0.6rem; border-radius: 999px; font-size: 0.72rem; font-weight: 700;
@@ -286,18 +295,23 @@ def first_existing(paths):
     return next((p for p in paths if os.path.exists(p)), None)
 
 
-def sidebar_brand():
-    """Sidebar header: the ADAPT mark on a light tile, with the name beside it."""
+def sidebar_brand(home_page=None):
+    """Sidebar header: the ADAPT mark on a light tile, with the name beside it.
+    When a home page is given, the whole header is a link to it (an invisible
+    page link laid over the HTML, like the landing-page cards)."""
     mark = ""
     if os.path.exists(C.LOGO_PATH):
         mark = f"<img src='{image_data_uri(C.LOGO_PATH, os.path.getmtime(C.LOGO_PATH), 160)}' alt=''/>"
-    st.markdown(
-        "<div class='adapt-brand-row'>"
-        f"<div class='tile'>{mark}</div>"
-        "<div class='txt'><div class='word'>ADAPT</div>"
-        "<div class='sub'>Assessment of Damage and Adaptation Planning Tool</div></div></div>",
-        unsafe_allow_html=True,
-    )
+    html = ("<div class='adapt-brand-row'>"
+            f"<div class='tile'>{mark}</div>"
+            "<div class='txt'><div class='word'>ADAPT</div>"
+            "<div class='sub'>Assessment of Damage and Adaptation Planning Tool</div></div></div>")
+    if home_page is None:
+        st.markdown(html, unsafe_allow_html=True)
+        return
+    with st.container(key="go_home"):
+        st.markdown(html, unsafe_allow_html=True)
+        st.page_link(home_page, label="Home", use_container_width=True)
 
 
 def dismiss_first_load_page_not_found():

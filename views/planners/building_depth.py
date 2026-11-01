@@ -14,19 +14,25 @@ def render(ctx):
     render_depth_tool(ctx)
 
 
-def render_depth_tool(ctx):
+def render_depth_tool(ctx, building_id=None, show_picker=True):
+    """Flood-depth tables for one building.
+
+    building_id: use this building (no picker) when show_picker is False.
+    """
     available_years = ctx.available_years
     loc_entry = ctx.loc_entry
     selected_location = ctx.selected_location
     st.markdown(
-        '<p class="tab-description">Flood depth at a single building. Pick a structure, enter the same '
-        'flood levels used in the map pages, and the table reports the projected water level by year (with '
-        'sea-level rise) three ways: depth above the <b>ground</b>, depth above the <b>first floor</b>, '
-        'and the absolute <b>NAVD88</b> water surface. Positive = water above that reference; '
-        'negative = below it (no flooding).</p>', unsafe_allow_html=True)
+        '<p class="tab-description">Enter the flood levels you want to test (the defaults are the present-day '
+        'annual, 10%-chance and 1%-chance levels from the water-level model), and the tables report the '
+        'projected water level by year (with sea-level rise) three ways: depth above the <b>ground</b>, depth '
+        'above the <b>first floor</b>, and the absolute <b>NAVD88</b> water surface. Positive = water above '
+        'that reference; negative = below it (no flooding).</p>', unsafe_allow_html=True)
     _bd_attrs = loc_entry.get('bldg_attrs') if loc_entry else None
     if _bd_attrs is None or _bd_attrs.empty:
         st.info("No building inventory (NSI) is available for this location.")
+    elif not show_picker and (building_id is None or int(building_id) not in set(_bd_attrs['id'].astype(int))):
+        st.info("Pick a building above to see its flood depth tables.")
     else:
         _bd_ids = _bd_attrs['id'].astype(int).tolist()
 
@@ -44,25 +50,32 @@ def render_depth_tool(ctx):
                 _lbl += f" - {_addr}"
             return _lbl
 
-        _bd_default_id = 579513026
-        _bd_idx = (_bd_ids.index(_bd_default_id)
-                   if (selected_location == "Pamunkey" and _bd_default_id in _bd_ids) else 0)
-        # Follow the building chosen on the damage tab (or clicked on the map).
-        _sync_id = st.session_state.get('bldg_details_selectbox', st.session_state.get('selected_building_id'))
-        try:
-            if _sync_id is not None and int(_sync_id) in _bd_ids:
-                _bd_idx = _bd_ids.index(int(_sync_id))
-                # Keyed widgets keep their own state, so push the synced id
-                # into the widget key whenever the chosen building changes.
-                if st.session_state.get('_bd_last_sync') != int(_sync_id):
-                    st.session_state['bd_id'] = int(_sync_id)
-                    st.session_state['_bd_last_sync'] = int(_sync_id)
-        except (TypeError, ValueError):
-            pass
-        _bd_sel = st.selectbox(
-            "Building (NSI id)", options=_bd_ids, index=_bd_idx,
-            format_func=_bd_fmt, key="bd_id",
-        )
+        if not show_picker:
+            _bd_sel = int(building_id)
+        else:
+            _bd_default_id = 579513026
+            _bd_idx = (_bd_ids.index(_bd_default_id)
+                       if (selected_location == "Pamunkey" and _bd_default_id in _bd_ids) else 0)
+            # Follow the building chosen elsewhere (damage page or map click).
+            _sync_id = st.session_state.get('bldg_details_selectbox', st.session_state.get('selected_building_id'))
+            try:
+                if _sync_id is not None and int(_sync_id) in _bd_ids:
+                    _bd_idx = _bd_ids.index(int(_sync_id))
+                    # Keyed widgets keep their own state, so push the synced id
+                    # into the widget key whenever the chosen building changes.
+                    if st.session_state.get('_bd_last_sync') != int(_sync_id):
+                        st.session_state['bd_id'] = int(_sync_id)
+                        st.session_state['_bd_last_sync'] = int(_sync_id)
+            except (TypeError, ValueError):
+                pass
+            # Once the key exists in session state it decides the value; passing
+            # a non-default index as well triggers Streamlit's "created with a
+            # default value but also had its value set" warning.
+            _bd_sel = st.selectbox(
+                "Building (NSI id)", options=_bd_ids,
+                index=(0 if 'bd_id' in st.session_state else _bd_idx),
+                format_func=_bd_fmt, key="bd_id",
+            )
         _brow = _bd_attrs[_bd_attrs['id'].astype(int) == int(_bd_sel)].iloc[0]
         _ground = _brow.get('ground_elevation')
         _ffe = _brow.get('FFE_ft')
