@@ -40,7 +40,8 @@ def render(ctx):
         "below.",
         module_key="planners", location=location_name,
     )
-    ctx.render_inline_settings(["occ", "year", "scn"])
+    # Occupancy is under Advanced options on this page (it applies to the whole module).
+    ctx.render_inline_settings(["year", "scn"])
     # The map requires per-building longitude/latitude. The bundle
     # format guarantees these columns are present (they live in
     # bldg_lookup.csv). The guard remains as a safety net for any
