@@ -69,11 +69,19 @@ def _sidebar(module, available_locations, registry):
     from views import _context as X
     with st.sidebar:
         ui.sidebar_brand(ST_PAGES["home"])      # the logo and name link to the landing page
-        if available_locations:
+        settings_slot = None
+        if module == "planners" and available_locations:
+            # Community Planning keeps location / occupancy / target year /
+            # SLR scenario in a compact 2 x 2 grid. The three setting slots
+            # are filled once the data is loaded (see _run_page).
+            with st.container(key="side_grid"):
+                r1 = st.columns(2, gap="small")
+                r2 = st.columns(2, gap="small")
+            with r1[0]:
+                X.location_selector(available_locations, registry, key="w_location_side")
+            settings_slot = {"occ": r1[1], "year": r2[0], "scn": r2[1]}
+        elif available_locations:
             X.location_selector(available_locations, registry, key="w_location_side")
-        # Community Planning keeps the occupancy / year / scenario settings
-        # here, under the location; the slot is filled once the data is loaded.
-        settings_slot = st.container(key="side_settings")
         m = C.MODULES[module]
         st.markdown(f"<div class='adapt-module-tag'>{m['icon']} {m['title']}</div>", unsafe_allow_html=True)
         for key in MODULE_PAGE_KEYS[module]:
@@ -148,9 +156,8 @@ def _run_page(key, module, title, fn):
 
     ctx = X.build_context(data_store, available_locations, registry)
     ctx.pages, ctx.module, ctx.page_key, ctx.first_page = ST_PAGES, module, key, FIRST_PAGE
-    if module == "planners":
-        with settings_slot:
-            ctx.render_sidebar_settings()
+    if module == "planners" and settings_slot:
+        ctx.render_sidebar_settings(settings_slot)
     _sidebar_tail(module, ctx, title)
     fn(ctx)
     ui.footer()
