@@ -71,15 +71,14 @@ def _sidebar(module, available_locations, registry):
         ui.sidebar_brand(ST_PAGES["home"])      # the logo and name link to the landing page
         settings_slot = None
         if module == "planners" and available_locations:
-            # Community Planning keeps location / occupancy / target year /
-            # SLR scenario in a compact 2 x 2 grid. The three setting slots
-            # are filled once the data is loaded (see _run_page).
+            # Community Planning: the location full width, then target year
+            # and SLR scenario side by side in one compact row. The two
+            # slots are filled once the data is loaded (see _run_page).
+            # Occupancy lives under Advanced options on the Dynamic maps page.
             with st.container(key="side_grid"):
-                r1 = st.columns(2, gap="small")
-                r2 = st.columns(2, gap="small")
-            with r1[0]:
                 X.location_selector(available_locations, registry, key="w_location_side")
-            settings_slot = {"occ": r1[1], "year": r2[0], "scn": r2[1]}
+                r2 = st.columns(2, gap="small")
+            settings_slot = {"year": r2[0], "scn": r2[1]}
         elif available_locations:
             X.location_selector(available_locations, registry, key="w_location_side")
         m = C.MODULES[module]
