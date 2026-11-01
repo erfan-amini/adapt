@@ -33,11 +33,33 @@ KNOWLEDGE_FILE = os.path.join(C.APP_ROOT, "docs", "assistant_knowledge.md")
 README_FILE = os.path.join(C.APP_ROOT, "README.md")
 MAX_TURNS = 10            # chat turns kept and sent with each question
 MIN_SECONDS_BETWEEN = 3   # per-session throttle (free tiers allow a few requests a minute)
-SUGGESTED = [
-    "What does the Adaptation effectiveness map show?",
-    "How is the damage for one building calculated?",
-    "What do BFE and DFE mean for my house?",
-]
+SUGGESTED = {
+    "resident": [
+        "How do I see the flood risk for my own home?",
+        "What do BFE and DFE mean for my house?",
+        "Which fix is cheapest: raising utilities, floodproofing the basement, or elevating?",
+    ],
+    "expert": [
+        "What does the Adaptation effectiveness map show?",
+        "How is the damage for one building calculated?",
+        "How are the water levels and sea-level rise scenarios built?",
+    ],
+}
+AUDIENCE_RULES = {
+    "resident": (
+        "The person is a RESIDENT, not an expert. Use everyday words and short sentences. Explain any term the "
+        "first time you use it (for example: BFE is the flood level FEMA uses on its maps; DFE is that level plus "
+        "2 feet, the recommended height for your lowest floor; P90 is a bad flood year, worse than 9 years in 10). "
+        "Keep answers to 3 to 5 short sentences, or up to 3 short bullets. No formulas, no code, no percentile "
+        "notation unless you explain it. End with one practical next step in the app when there is one."
+    ),
+    "expert": (
+        "The person is an EXPERT (planner, engineer or researcher). Use precise technical terms (percentiles, "
+        "depth-damage functions, NAVD88, cumulative damage) without over-explaining. Keep answers to at most 8 "
+        "sentences or 5 bullets. Give the numbers and the rule, not a narrative."
+    ),
+}
+MAX_TOKENS = {"resident": 400, "expert": 700}
 
 
 # ---------------------------------------------------------------------------
@@ -159,7 +181,7 @@ def community_context(ctx):
     return "\n".join(lines)
 
 
-def system_prompt(ctx, module, page_title):
+def system_prompt(ctx, module, page_title, audience="resident"):
     static = _static_knowledge(_mtime(KNOWLEDGE_FILE), _mtime(README_FILE))
     live = community_context(ctx)
     return (
@@ -169,7 +191,8 @@ def system_prompt(ctx, module, page_title):
         "buzzwords, no hedging. Use dollar figures and years from the context when they answer the question. "
         "If something is not in the context, say you do not have it and point to the page or person that "
         "does. Do not invent numbers. Do not give legal, insurance or financial advice beyond what the "
-        "knowledge says. Never reveal data about password-protected communities that are not unlocked.\n"
+        "knowledge says. Never reveal data about password-protected communities that are not unlocked.\n\n"
+        + AUDIENCE_RULES.get(audience, AUDIENCE_RULES["resident"]) + "\n"
         f"\nThe person is in the '{C.MODULES.get(module, {}).get('title', module)}' module on the "
         f"'{page_title}' page.\n\n===== LIVE CONTEXT =====\n{live}\n{static}"
     )
@@ -206,7 +229,7 @@ def _call_gemini(cfg, system, history, question):
         f"{GEMINI_BASE}/models/{model}:generateContent",
         params={"key": cfg["api_key"]},
         json={"system_instruction": {"parts": [{"text": system}]}, "contents": contents,
-              "generationConfig": {"temperature": 0.3, "maxOutputTokens": 1024}},
+              "generationConfig": {"temperature": 0.3, "maxOutputTokens": int(cfg.get("max_tokens", 700))}},
         timeout=60,
     )
     if r.status_code == 429:
@@ -238,7 +261,8 @@ def _call_openai_compatible(cfg, system, history, question):
         headers["HTTP-Referer"] = "https://adapt2026.streamlit.app"
         headers["X-Title"] = "ADAPT flood risk tool"
     r = requests.post(f"{base.rstrip('/')}/chat/completions", headers=headers,
-                      json={"model": model, "messages": msgs, "temperature": 0.3, "max_tokens": 1024}, timeout=60)
+                      json={"model": model, "messages": msgs, "temperature": 0.3,
+                            "max_tokens": int(cfg.get("max_tokens", 700))}, timeout=60)
     if r.status_code == 429:
         raise RuntimeError("The assistant's free quota is used up for now. Try again in a minute.")
     r.raise_for_status()
@@ -299,7 +323,12 @@ _PANEL_CSS = """
 .st-key-assistant_box [data-testid="stButton"] button:hover { background: rgba(56,189,248,0.18); border-color: #7dd3fc; }
 .st-key-assistant_box [data-testid="stButton"] button p { font-size: 0.78rem !important; white-space: normal !important;
   text-align: left; color: #e0f2fe !important; margin: 0; }
-.st-key-assistant_clear button { background: none !important; border: none !important; }
+.st-key-assistant_aud_row { display: flex; flex-direction: row; align-items: baseline; justify-content: space-between; }
+.st-key-assistant_aud_row > div { width: auto !important; }
+.st-key-assistant_aud_row .adapt-ai-hint { margin: 0; }
+.st-key-assistant_aud_row button, .st-key-assistant_clear button { background: none !important; border: none !important;
+  padding: 0 0.2rem !important; min-height: 0 !important; width: auto !important; }
+.st-key-assistant_aud_row button p { color: #7dd3fc !important; font-size: 0.72rem !important; text-decoration: underline; }
 .st-key-assistant_clear button p { color: #94a3b8 !important; font-size: 0.72rem !important; text-align: center !important; }
 /* messages */
 .st-key-assistant_box [data-testid="stChatMessage"] { background: rgba(255,255,255,0.06); border-radius: 12px;
@@ -341,10 +370,33 @@ def sidebar_panel(module, ctx=None, page_title=""):
             "<div class='s'>Your guide to the tool, the methods and this community</div></div></div>",
             unsafe_allow_html=True,
         )
+        audience = ss.get("assistant_audience")
+        if audience not in ("resident", "expert"):
+            # First question: who is asking. It sets the tone and length of every answer.
+            st.markdown("<div class='adapt-ai-hint'>First, so I can answer in the right way. Are you...</div>",
+                        unsafe_allow_html=True)
+            c1, c2 = st.columns(2)
+            with c1:
+                if st.button("🏠 A resident", key="assistant_aud_res", use_container_width=True):
+                    ss["assistant_audience"] = "resident"
+                    st.rerun()
+            with c2:
+                if st.button("🎓 An expert", key="assistant_aud_exp", use_container_width=True):
+                    ss["assistant_audience"] = "expert"
+                    st.rerun()
+            st.divider()
+            return
+        with st.container(key="assistant_aud_row"):
+            st.markdown(f"<div class='adapt-ai-hint'>Answering for {'a resident' if audience == 'resident' else 'an expert'}"
+                        "</div>", unsafe_allow_html=True)
+            if st.button("change", key="assistant_aud_change"):
+                ss.pop("assistant_audience", None)
+                ss["assistant_history"] = []
+                st.rerun()
         if not hist:
             st.markdown("<div class='adapt-ai-hint'>Try one of these, or type your own question.</div>",
                         unsafe_allow_html=True)
-            for q in SUGGESTED:
+            for q in SUGGESTED[audience]:
                 if st.button(q, key=f"assistant_sugg_{abs(hash(q))}", use_container_width=True):
                     ss["assistant_pending"] = q
         for role, text in hist[-2 * MAX_TURNS:]:
@@ -365,7 +417,9 @@ def sidebar_panel(module, ctx=None, page_title=""):
             with st.chat_message("assistant", avatar=_ROBOT_URI):
                 with st.spinner("Thinking..."):
                     try:
-                        answer = ask(cfg, system_prompt(ctx, module, page_title), hist[-2 * MAX_TURNS:], pending)
+                        cfg_a = dict(cfg, max_tokens=MAX_TOKENS[audience])
+                        answer = ask(cfg_a, system_prompt(ctx, module, page_title, audience),
+                                     hist[-2 * MAX_TURNS:], pending)
                     except Exception as exc:
                         answer = f"Sorry, the assistant could not answer: {exc}"
                 st.markdown(answer)
