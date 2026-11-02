@@ -116,8 +116,7 @@ def render(ctx):
         ".adapt-step { font-size:0.74rem; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:#0369a1; margin:0.2rem 0 0.2rem 0; }"
         ".adapt-dmg-line { font-size:0.95rem; margin:0.15rem 0; } .adapt-dmg-line b { color:#0f172a; }"
         ".adapt-dmg-sub { font-size:0.86rem; color:#15803d; margin:0 0 0.35rem 1.1rem; }"
-        # Step 1: the example card (left) and the search panel (right)
-        "  box-shadow:0 8px 24px rgba(15,23,42,0.06); }"
+        # Step 1: the search panel
         ".st-key-home_search { background:linear-gradient(180deg,#f0f9ff 0%,#ffffff 100%); border:1px solid #bae6fd; border-radius:18px; "
         "  padding:1.2rem 1.3rem 1.1rem 1.3rem; box-shadow:0 8px 24px rgba(14,165,233,0.10); gap:0.6rem; }"
         ".adapt-search-title { font-size:1.35rem; font-weight:800; color:#0f172a; letter-spacing:-0.01em; margin:0; }"
