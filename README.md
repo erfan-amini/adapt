@@ -26,7 +26,7 @@ report uses the median (P50) as the expected damage and P05 to P95 as the range,
 adds the modeled sea-level rise to present-day flood levels set per community in
 Data and settings (`flood_levels`).
 
-Access: locations flagged `protected` in `data/locations.json` (Shinnecock and Pamunkey by
+Access: locations flagged `protected` in `data/locations.json` (all four locations by
 default) show their results only after the access password, on every module. The
 password is `[access] password` in Streamlit secrets, falling back to the project's
 long-standing password. The Developer module is open unless `[developer] password` is set.

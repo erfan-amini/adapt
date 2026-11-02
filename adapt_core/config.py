@@ -40,7 +40,7 @@ Y_NOW = 2025
 # Per-location defaults shipped with the app. The Developer module can edit
 # these and add new locations; edits are stored in data/locations.json.
 # "protected": the location's results are shown only after the access password
-# (tribal partner data). The password comes from Streamlit secrets
+# (all four project locations). The password comes from Streamlit secrets
 # ([access] password) and falls back to the project's long-standing one.
 LOCATION_DEFAULTS = {
     "Shinnecock":  {"name": "Shinnecock", "bfe_ft": 9.0, "elev_min_shortfall_ft": 1.0,
@@ -50,7 +50,7 @@ LOCATION_DEFAULTS = {
                         "Long Island, New York, bounded by Shinnecock Bay. Rising seas, storm surge and "
                         "shoreline erosion expose homes, roads and cultural sites to more frequent flooding.")},
     "MasticBeach": {"name": "Mastic Beach", "bfe_ft": 8.0, "elev_min_shortfall_ft": 0.0,
-                    "restrict_manuf": False, "mobile_homes_dominated": False, "protected": False,
+                    "restrict_manuf": False, "mobile_homes_dominated": False, "protected": True,
                     "state": "NY",
                     # Present-day flood levels (ft NAVD88) used by the home report.
                     "flood_levels": {"monthly_ft": 3.7, "pct10_ft": 5.7, "pct1_ft": 8.5},
@@ -68,13 +68,13 @@ LOCATION_DEFAULTS = {
                         "three sides. It faces tidal and storm flooding, stormwater and land subsidence, with "
                         "roughly 3 to 6 ft of sea-level rise projected by 2100.")},
     # Gloucester County, VA. BFE 8 ft = the median BFE on the county's elevation
-    # certificates (7 to 10 ft). Open to everyone, like Mastic Beach.
+    # certificates (7 to 10 ft). Password protected, like every location.
     # Present-day (2025) levels, ft NAVD88: MHHW from NOAA station 8637689
     # (Yorktown USCG, 1983-2001 epoch); 10% and 1% from the NACCS save point
     # 17719 curve plus Int-High sea-level rise 2020 to 2025 (see
     # tools/make_gloucester_inputs.py). No monthly level yet.
     "Gloucester":  {"name": "Gloucester County", "bfe_ft": 8.0, "elev_min_shortfall_ft": 0.0,
-                    "restrict_manuf": False, "mobile_homes_dominated": False, "protected": False,
+                    "restrict_manuf": False, "mobile_homes_dominated": False, "protected": True,
                     "state": "VA",
                     "flood_levels": {"mhhw_ft": 1.1, "pct10_ft": 5.1, "pct1_ft": 8.8},
                     "blurb": (
