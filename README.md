@@ -26,10 +26,10 @@ report uses the median (P50) as the expected damage and P05 to P95 as the range,
 adds the modeled sea-level rise to present-day flood levels set per community in
 Data and settings (`flood_levels`).
 
-Access: locations flagged `protected` in `data/locations.json` (all four locations by
-default) show their results only after the access password, on every module. The
-password is `[access] password` in Streamlit secrets, falling back to the project's
-long-standing password. The Developer module is open unless `[developer] password` is set.
+Access: when any location is flagged `protected` in `data/locations.json` (all four by
+default), the landing page asks for the access password once, and that one entry opens every
+location and module for the session. The password is `[access] password` in Streamlit secrets,
+falling back to the project's long-standing password. The Developer module is open unless `[developer] password` is set.
 
 The damage and adaptation model runs inside the app (`adapt_core/engine.py`),
 a validated port of the MATLAB pipeline `AAA___Main_v14.m`. MATLAB is no

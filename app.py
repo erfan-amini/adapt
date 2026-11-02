@@ -126,23 +126,22 @@ def _run_page(key, module, title, fn):
     if module is None:                       # landing page: no sidebar
         ui.hide_sidebar()
         st.session_state["_settings_in_sidebar"] = False
-        # Coming back to the landing page locks the protected communities
-        # again, so entering one always asks for the password.
-        if st.session_state.pop("_visited_module", False):
-            st.session_state["unlocked_locations"] = set()
         ctx = X.build_context(data_store, available_locations, registry)
         ctx.pages, ctx.module, ctx.page_key, ctx.first_page = ST_PAGES, None, key, FIRST_PAGE
         fn(ctx)
         ui.footer()
         return
 
+    # One password, asked once on the landing page, opens the whole app.
+    # A module page opened directly while locked goes back to the landing page.
+    if ui.any_protected(registry) and not ui.app_unlocked():
+        st.switch_page(ST_PAGES["home"])
+
     settings_slot = _sidebar(module, available_locations, registry)
     st.session_state["_settings_in_sidebar"] = (module == "planners")
-    st.session_state["_visited_module"] = True      # the landing page re-locks protected communities
 
-    # Protected locations (tribal partner data) need the access password on
-    # every module. The Developer module is open unless a developer password
-    # is configured in secrets.
+    # Per-location gate: passes once the app password is in. The Developer
+    # module also asks for a developer password if one is set in secrets.
     cfg = ui.location_cfg(registry, location) if location else None
     if location and not ui.location_gate(location, cfg):
         _sidebar_tail(module, None, title)
