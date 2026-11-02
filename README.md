@@ -29,7 +29,8 @@ Data and settings (`flood_levels`).
 Access: when any location is flagged `protected` in `data/locations.json` (all four by
 default), the landing page asks for the access password once, and that one entry opens every
 location and module for the session. The password is `[access] password` in Streamlit secrets,
-falling back to the project's long-standing password. The Developer module is open unless `[developer] password` is set.
+falling back to the project's long-standing password. The Developer module also asks for
+`[developer] password` when one is set.
 
 The damage and adaptation model runs inside the app (`adapt_core/engine.py`),
 a validated port of the MATLAB pipeline `AAA___Main_v14.m`. MATLAB is no
