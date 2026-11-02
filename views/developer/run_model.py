@@ -203,6 +203,7 @@ def render(ctx):
             ss["run_saved"] = True
             st.success(f"Wrote {len(written)} files to data/{slug}/.")
             st.cache_data.clear()
+            st.cache_resource.clear()      # bundles are cached as shared resources
     with s2:
         buf = io.BytesIO()
         with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:

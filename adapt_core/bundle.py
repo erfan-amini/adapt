@@ -199,7 +199,12 @@ def _backfill_dropped_actions(df):
     return pd.concat(pieces, ignore_index=True)
 
 
-@st.cache_data(show_spinner=False)
+# cache_resource, not cache_data: the bundle is loaded once per server process
+# and every session shares the same objects. cache_data would hand each rerun
+# of each session a fresh unpickled copy (hundreds of MB per community), which
+# is what pushed the hosted app over its memory limit once a fourth community
+# was added. Pages must treat the entry as read-only (they filter or copy).
+@st.cache_resource(show_spinner=False, max_entries=12)
 def load_bundle(data_folder, location_slug, file_sig=None):
     """Load a single-location CSV bundle and return the data_store entry.
 
