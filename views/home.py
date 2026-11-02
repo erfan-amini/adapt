@@ -48,6 +48,10 @@ def render(ctx):
         unsafe_allow_html=True,
     )
 
+    if ui.any_protected(ctx.registry) and not ui.app_unlocked():
+        ui.app_password_form()
+        return
+
     if not ctx.available_locations:
         st.error("No location data found. Add a results bundle under `data/<Location>/` or run the model "
                  "from the Developer module.")

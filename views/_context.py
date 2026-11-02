@@ -61,7 +61,7 @@ def location_selector(available_locations, registry, key, label="📍 Location",
 
     def _fmt(name):
         cfg = ui.location_cfg(registry, name) or {}
-        return f"{name}  🔒" if cfg.get("protected") and name not in ss.get("unlocked_locations", set()) else name
+        return f"{name}  🔒" if cfg.get("protected") and not ui.location_unlocked(name) else name
 
     st.selectbox(label, available_locations, index=idx, key=key, on_change=_cb, help=help, format_func=_fmt)
     return ss.cv_location

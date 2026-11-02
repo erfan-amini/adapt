@@ -547,8 +547,35 @@ def is_protected(cfg):
     return bool((cfg or {}).get("protected", False))
 
 
+def any_protected(reg):
+    return any(is_protected(cfg) for cfg in (reg or {}).values())
+
+
+def app_unlocked():
+    """One password for the whole app, entered once on the landing page."""
+    return bool(st.session_state.get("app_unlocked", False))
+
+
 def location_unlocked(location_name):
-    return location_name in st.session_state.get("unlocked_locations", set())
+    return app_unlocked() or location_name in st.session_state.get("unlocked_locations", set())
+
+
+def app_password_form():
+    """The landing page's password box. One correct entry opens every
+    location and module for the rest of the session."""
+    pw = access_password()
+    st.markdown("<div style='height:0.9rem'></div>", unsafe_allow_html=True)
+    _, container, _ = st.columns([1, 1.1, 1])
+    with container:
+        with st.form("app_gate", clear_on_submit=True):
+            entered = st.text_input("Password", type="password", placeholder="Enter the project password")
+            ok = st.form_submit_button("Open ADAPT", type="primary", use_container_width=True)
+        if ok:
+            if entered == pw:
+                st.session_state["app_unlocked"] = True
+                st.rerun()
+            else:
+                st.error("Incorrect password.")
 
 
 def location_gate(location_name, cfg, compact=False):
