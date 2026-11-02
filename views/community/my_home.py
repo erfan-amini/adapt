@@ -120,8 +120,7 @@ def render(ctx):
         ".st-key-home_search { background:linear-gradient(180deg,#f0f9ff 0%,#ffffff 100%); border:1px solid #bae6fd; border-radius:18px; "
         "  padding:1.2rem 1.3rem 1.1rem 1.3rem; box-shadow:0 8px 24px rgba(14,165,233,0.10); gap:0.6rem; }"
         ".adapt-search-title { font-size:1.35rem; font-weight:800; color:#0f172a; letter-spacing:-0.01em; margin:0; }"
-        ".adapt-search-sub { font-size:0.92rem; color:#475569; margin:0.15rem 0 0.4rem 0; }"
-        ".adapt-steps { display:flex; flex-direction:column; gap:0.4rem; margin:0.2rem 0 0.5rem 0; }"
+        ".adapt-steps { display:flex; flex-direction:column; gap:0.4rem; margin:0.6rem 0 0.5rem 0; }"
         ".adapt-steps div { display:flex; align-items:center; gap:0.6rem; font-size:0.88rem; color:#334155; }"
         ".adapt-steps span { flex:0 0 1.5rem; width:1.5rem; height:1.5rem; border-radius:999px; background:#0ea5e9; color:#fff; "
         "  font-weight:700; font-size:0.78rem; display:inline-flex; align-items:center; justify-content:center; }"
@@ -193,8 +192,6 @@ def render(ctx):
         with mid:
             with ctx._keyed_container("home_search"):
                 st.markdown("<p class='adapt-search-title'>Get the report for your home</p>"
-                            "<p class='adapt-search-sub'>Flood depths at your house, the damage to expect, and what "
-                            "each action would avoid, on screen and as a PDF.</p>"
                             "<div class='adapt-steps'><div><span>1</span>Type your street address</div>"
                             "<div><span>2</span>Confirm your home on the aerial photo</div>"
                             "<div><span>3</span>Read or download your report</div></div>", unsafe_allow_html=True)
