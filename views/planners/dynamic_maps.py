@@ -665,8 +665,15 @@ def render(ctx):
                         _cl = max(math.cos(math.radians(float(center_lat))), 1e-6)
                         _zoom_lat = math.log2((360.0 / (_lat_span * 1.4)) * _cl)
                         _default_map_zoom = float(min(_zoom_lon, _zoom_lat))
-                        # Bias the default toward a closer view of the community.
-                        _default_map_zoom = max(min(_default_map_zoom + 1.5, 17.5), 13.0)
+                        if _default_map_zoom >= 11.5:
+                            # A small community: bias toward a closer view.
+                            _default_map_zoom = max(min(_default_map_zoom + 1.5, 17.5), 13.0)
+                        else:
+                            # A wide area (a county): show all of it, centred on
+                            # the middle of the extent rather than the mean point.
+                            _default_map_zoom = max(min(_default_map_zoom + 0.8, 13.0), 8.5)
+                            center_lat = (float(np.nanmax(_mlat)) + float(np.nanmin(_mlat))) / 2.0
+                            center_lon = (float(np.nanmax(_mlon)) + float(np.nanmin(_mlon))) / 2.0
                     else:
                         _default_map_zoom = 15.5
                 except Exception:

@@ -28,11 +28,11 @@ are not used; the scenarios are computed from the "2017 NOAA SLR" sheet.
 
 ## Inventory (`DDD___Gloucester___NSI.xlsx`)
 
-- NSI points for the county with ground elevation at or below 20 ft NAVD88
-  (5,129 of 18,151), minus 64 with no occupancy type: 5,065 buildings.
-  Buildings above 20 ft cannot be reached by water in any scenario through
+- NSI points for the county with ground elevation at or below 30 ft NAVD88
+  (6,913 of 18,151), minus 64 with no occupancy type: 6,849 buildings.
+  Buildings above 30 ft cannot be reached by water in any scenario through
   2100 (the highest sampled level is about 24 ft).
-- Elevation certificates (567 buildings in this set): ground elevation =
+- Elevation certificates (570 buildings in this set): ground elevation =
   lowest adjacent grade (LAG), foundation height = certificate finished
   first-floor elevation minus LAG, so the model's first-floor elevation is
   the surveyed one. Year built from the certificate's parcel record where
@@ -47,7 +47,7 @@ are not used; the scenarios are computed from the "2017 NOAA SLR" sheet.
 - Present-day flood levels for the home report: MHHW 1.1 ft (NOAA station
   8637689, Yorktown USCG, 1983-2001 epoch), 10% 5.1 ft and 1% 8.8 ft (NACCS
   plus Int-High rise 2020 to 2025). No monthly level yet.
-- Protected (password) until the county has seen the results.
+- Open to everyone (no password), like Mastic Beach.
 
 ## Open items
 
