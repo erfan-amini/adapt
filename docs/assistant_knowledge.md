@@ -18,8 +18,8 @@ https://github.com/erfan-amini/adapt.
 Communities with results: Mastic Beach (NY, open to everyone), Shinnecock
 Nation (NY, password protected), Pamunkey Indian Reservation (VA, password
 protected), Gloucester County (VA, open to everyone; the low-lying part of
-the county, buildings with ground elevation at or below 30 ft NAVD88, 6,849
-buildings, 570 of them with surveyed first-floor elevations from elevation
+the county, buildings with ground elevation at or below 20 ft NAVD88, 5,065
+buildings, 567 of them with surveyed first-floor elevations from elevation
 certificates; water levels from the NACCS recurrence curve at save point
 17719 shifted by the NOAA 2017 Intermediate-High and High sea-level rise
 scenarios for Sewells Point, which the app labels median and high).

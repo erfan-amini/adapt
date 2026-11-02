@@ -28,11 +28,9 @@ are not used; the scenarios are computed from the "2017 NOAA SLR" sheet.
 
 ## Inventory (`DDD___Gloucester___NSI.xlsx`)
 
-- NSI points for the county with ground elevation at or below 30 ft NAVD88
-  (6,913 of 18,151), minus 64 with no occupancy type: 6,849 buildings.
-  Buildings above 30 ft cannot be reached by water in any scenario through
-  2100 (the highest sampled level is about 24 ft).
-- Elevation certificates (570 buildings in this set): ground elevation =
+- NSI points for the county with ground elevation at or below 20 ft NAVD88
+  (5,129 of 18,151), minus 64 with no occupancy type: 5,065 buildings.
+- Elevation certificates (567 buildings in this set): ground elevation =
   lowest adjacent grade (LAG), foundation height = certificate finished
   first-floor elevation minus LAG, so the model's first-floor elevation is
   the surveyed one. Year built from the certificate's parcel record where
