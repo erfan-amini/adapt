@@ -45,7 +45,7 @@ are not used; the scenarios are computed from the "2017 NOAA SLR" sheet.
 - Present-day flood levels for the home report: MHHW 1.1 ft (NOAA station
   8637689, Yorktown USCG, 1983-2001 epoch), 10% 5.1 ft and 1% 8.8 ft (NACCS
   plus Int-High rise 2020 to 2025). No monthly level yet.
-- Open to everyone (no password), like Mastic Beach.
+- Password protected, like every location.
 
 ## Open items
 
