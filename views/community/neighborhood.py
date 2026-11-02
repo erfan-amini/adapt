@@ -91,17 +91,24 @@ def _nx_hexagons(d, size_m):
     return int(max(4, min(80, round(span_m / max(size_m, 40.0)))))
 
 
-def _zoom(d):
-    """Web-Mercator zoom that frames the buildings (same rule as the dynamic maps)."""
+def _frame(d):
+    """Web-Mercator zoom and centre that frame the buildings (same rule as
+    the dynamic maps). A small community is framed a little closer, centred
+    on its mean point; a wide area (a county) is shown whole, centred on the
+    middle of its extent."""
     try:
         lat, lon = d["latitude"].values, d["longitude"].values
         lon_span = max((float(np.nanmax(lon)) - float(np.nanmin(lon))) * 1.25, 1e-3)
         lat_span = max((float(np.nanmax(lat)) - float(np.nanmin(lat))) * 1.25, 1e-3)
         cl = max(math.cos(math.radians(float(np.nanmean(lat)))), 1e-6)
         z = min(math.log2(360.0 / lon_span), math.log2((360.0 / (lat_span * 1.4)) * cl))
-        return float(max(min(z + 1.2, 16.5), 11.0))
+        if z >= 11.5:
+            return float(max(min(z + 1.2, 16.5), 11.0)), float(np.nanmean(lat)), float(np.nanmean(lon))
+        return (float(max(min(z + 0.8, 11.0), 8.5)),
+                (float(np.nanmax(lat)) + float(np.nanmin(lat))) / 2.0,
+                (float(np.nanmax(lon)) + float(np.nanmin(lon))) / 2.0)
     except Exception:
-        return 13.0
+        return 13.0, float(np.nanmean(d["latitude"].values)), float(np.nanmean(d["longitude"].values))
 
 
 def _fmt(kind, v):
@@ -157,9 +164,9 @@ def _hex_figure(d, vals, nx, metric_label, kind, scale, style, layers):
                       thickness=14, len=0.6, x=0.99, tickprefix="$" if kind == "money" else None,
                       separatethousands=True),
         name=metric_label))
+    _fz, _flat, _flon = _frame(d)
     fig.update_layout(
-        mapbox=dict(style=style, layers=layers, zoom=_zoom(d),
-                    center=dict(lat=float(np.nanmean(lat)), lon=float(np.nanmean(lon)))),
+        mapbox=dict(style=style, layers=layers, zoom=_fz, center=dict(lat=_flat, lon=_flon)),
         height=620, margin=dict(l=0, r=0, t=0, b=0), showlegend=False,
     )
     return fig, z, counts

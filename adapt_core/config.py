@@ -68,13 +68,13 @@ LOCATION_DEFAULTS = {
                         "three sides. It faces tidal and storm flooding, stormwater and land subsidence, with "
                         "roughly 3 to 6 ft of sea-level rise projected by 2100.")},
     # Gloucester County, VA. BFE 8 ft = the median BFE on the county's elevation
-    # certificates (7 to 10 ft). Protected until the county has seen the results.
+    # certificates (7 to 10 ft). Open to everyone, like Mastic Beach.
     # Present-day (2025) levels, ft NAVD88: MHHW from NOAA station 8637689
     # (Yorktown USCG, 1983-2001 epoch); 10% and 1% from the NACCS save point
     # 17719 curve plus Int-High sea-level rise 2020 to 2025 (see
     # tools/make_gloucester_inputs.py). No monthly level yet.
     "Gloucester":  {"name": "Gloucester County", "bfe_ft": 8.0, "elev_min_shortfall_ft": 0.0,
-                    "restrict_manuf": False, "mobile_homes_dominated": False, "protected": True,
+                    "restrict_manuf": False, "mobile_homes_dominated": False, "protected": False,
                     "state": "VA",
                     "flood_levels": {"mhhw_ft": 1.1, "pct10_ft": 5.1, "pct1_ft": 8.8},
                     "blurb": (

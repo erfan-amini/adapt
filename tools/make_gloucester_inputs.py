@@ -54,7 +54,7 @@ YEARS = list(range(2025, 2101))
 N_MC = 1000
 SEED = 20261101
 SCENARIOS = {"P50": "Int-High", "P90": "High"}
-MAX_GROUND_FT = 20.0              # inventory scope: buildings with ground elevation at or below this
+MAX_GROUND_FT = 30.0              # inventory scope: buildings with ground elevation at or below this
 NACCS_STAT = "mean"               # 'mean' or 'upper95'
 
 
