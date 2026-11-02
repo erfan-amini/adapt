@@ -17,8 +17,14 @@ https://github.com/erfan-amini/adapt.
 
 Communities with results: Mastic Beach (NY, open to everyone), Shinnecock
 Nation (NY, password protected), Pamunkey Indian Reservation (VA, password
-protected). Protected results are shown only after the access password is
-entered; the assistant never reveals them otherwise.
+protected), Gloucester County (VA, password protected; the low-lying part of
+the county, buildings with ground elevation at or below 20 ft NAVD88, 5,065
+buildings, 567 of them with surveyed first-floor elevations from elevation
+certificates; water levels from the NACCS recurrence curve at save point
+17719 shifted by the NOAA 2017 Intermediate-High and High sea-level rise
+scenarios for Sewells Point, which the app labels median and high).
+Protected results are shown only after the access password is entered; the
+assistant never reveals them otherwise.
 
 ## Modules and pages
 
@@ -86,7 +92,8 @@ and name at the top of the sidebar returns to the landing page.
 - Water levels: 1,000 Monte Carlo simulations of the annual maximum water
   level for every year from 2025 to 2100, under two sea-level-rise
   scenarios: median (50th percentile) and high (90th percentile) of the
-  official projections (New York State projections for the New York sites).
+  official projections (New York State projections for the New York sites;
+  NOAA 2017 Intermediate-High and High for the Virginia sites).
   They include tides, storm surge and sea-level rise.
 - Damage: FEMA Hazus depth-damage functions (FAST tables) give the share of
   structure and content value lost for a given water depth above the first
@@ -138,7 +145,7 @@ and name at the top of the sidebar returns to the landing page.
   the modeled sea-level rise (change in the median annual-maximum water
   level since 2025) to present-day flood levels stored per community
   (Mastic Beach: monthly flood 3.7 ft, 10% annual chance 5.7 ft, 1% annual
-  chance 8.5 ft NAVD88). Sea-level rise at Mastic Beach under the median
+  chance 8.5 ft NAVD88; Gloucester County: MHHW 1.1 ft, 10% 5.1 ft, 1% 8.8 ft). Sea-level rise at Mastic Beach under the median
   scenario is about 8 inches by 2040 and 16 inches by 2055; under the high
   scenario about 10 and 22 inches.
 - Indicative retrofit costs used in the pages (from the project workshop
