@@ -48,10 +48,6 @@ def render(ctx):
         unsafe_allow_html=True,
     )
 
-    if ui.any_protected(ctx.registry) and not ui.app_unlocked():
-        ui.app_password_form()
-        return
-
     if not ctx.available_locations:
         st.error("No location data found. Add a results bundle under `data/<Location>/` or run the model "
                  "from the Developer module.")
@@ -60,14 +56,9 @@ def render(ctx):
     c1, c2 = st.columns([0.36, 0.64], vertical_alignment="bottom")
     with c1:
         X.location_selector(ctx.available_locations, ctx.registry, key="w_location_home", label="Community")
-    cfg = ui.location_cfg(ctx.registry, ss.cv_location) or {}
-    locked = ui.is_protected(cfg) and not ui.location_unlocked(ss.cv_location)
+    # The landing page stays open; the sections ask for the password.
     with c2:
-        if locked:
-            with ctx._keyed_container("gate_inline"):
-                ui.location_gate(ss.cv_location, cfg, compact=True)
-        else:
-            st.markdown(f"<div class='adapt-siteline'>{_site_line(ctx)}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='adapt-siteline'>{_site_line(ctx)}</div>", unsafe_allow_html=True)
 
     # Each card is one click: the HTML card is drawn, and a full-size,
     # invisible page link is laid over it (see the st-key-go_ rules in ui.py).

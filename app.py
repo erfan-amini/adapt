@@ -132,13 +132,16 @@ def _run_page(key, module, title, fn):
         ui.footer()
         return
 
-    # One password, asked once on the landing page, opens the whole app.
-    # A module page opened directly while locked goes back to the landing page.
-    if ui.any_protected(registry) and not ui.app_unlocked():
-        st.switch_page(ST_PAGES["home"])
-
     settings_slot = _sidebar(module, available_locations, registry)
     st.session_state["_settings_in_sidebar"] = (module == "planners")
+
+    # The landing page is open. Every section asks for the project password
+    # once; one correct entry opens all sections and locations for the session.
+    if ui.any_protected(registry) and not ui.app_unlocked():
+        ui.app_gate_card()
+        _sidebar_tail(module, None, title)
+        ui.footer()
+        return
 
     # Per-location gate: passes once the app password is in. The Developer
     # module also asks for a developer password if one is set in secrets.

@@ -560,16 +560,22 @@ def location_unlocked(location_name):
     return app_unlocked() or location_name in st.session_state.get("unlocked_locations", set())
 
 
-def app_password_form():
-    """The landing page's password box. One correct entry opens every
-    location and module for the rest of the session."""
+def app_gate_card():
+    """Shown when a section is opened before the password is in. One correct
+    entry opens every section and location for the rest of the session."""
     pw = access_password()
-    st.markdown("<div style='height:0.9rem'></div>", unsafe_allow_html=True)
-    _, container, _ = st.columns([1, 1.1, 1])
+    st.markdown("<div style='height:1rem'></div>", unsafe_allow_html=True)
+    _, container, _ = st.columns([1, 1.25, 1])
     with container:
+        st.markdown(
+            "<div class='adapt-card accent'><div class='icon'>🔒</div>"
+            "<h3>This section is password protected</h3>"
+            "<p>Enter the project password once to open every section of ADAPT.</p></div>",
+            unsafe_allow_html=True,
+        )
         with st.form("app_gate", clear_on_submit=True):
-            entered = st.text_input("Password", type="password", placeholder="Enter the project password")
-            ok = st.form_submit_button("Open ADAPT", type="primary", use_container_width=True)
+            entered = st.text_input("Password", type="password")
+            ok = st.form_submit_button("Open", type="primary", use_container_width=True)
         if ok:
             if entered == pw:
                 st.session_state["app_unlocked"] = True
