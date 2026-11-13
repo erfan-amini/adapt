@@ -33,7 +33,7 @@ const LOCATIONS = {
   masticbeach: { name: "Mastic Beach", center: [40.761, -72.848], zoom: 13 },
   pamunkey: { name: "Pamunkey", center: [37.576, -77.004], zoom: 14 },
   westpoint: { name: "West Point", center: [37.552, -76.801], zoom: 14 },
-  hamiltonhowardbeach: { name: "Hamilton and Howard Beach", center: [40.657, -73.840], zoom: 15 },
+  hamiltonhowardbeach: { name: "Hamilton and Howard Beach", center: [40.657, -73.840], zoom: 15, ground3dep: true },
 };
 
 const OCC_TYPES = [
@@ -88,6 +88,18 @@ const SHEET_URL = "https://docs.google.com/spreadsheets/d/13FjIR3W-2ENqPdkIVVJjk
 
 // ⚠️ PASTE YOUR GITHUB REPO URL BELOW (e.g., "https://github.com/username/buildings-survey"):
 const README_URL = "https://github.com/erfan-amini/buildings-survey#readme";
+
+// One file serves two places: the ADAPT app embeds it (Developer > NSI survey
+// tool) and injects window.__ADAPT_LOCATION; GitHub Pages serves it on its own:
+//   https://erfan-amini.github.io/buildings-survey/?location=<slug>
+const IS_EMBEDDED = typeof window !== "undefined" && !!window.__ADAPT_LOCATION;
+const STANDALONE_URL = "https://erfan-amini.github.io/buildings-survey/";
+function urlLocation() {
+  try {
+    const v = new URLSearchParams(window.location.search).get("location");
+    return v ? v.toLowerCase().replace(/[^a-z]/g, "") : null;
+  } catch (e) { return null; }
+}
 
 // ─── Robust fetch helper: throws on non-OK responses ───
 async function postJson(payload) {
@@ -503,13 +515,31 @@ function App() {
   // Initial location comes from the embedding app (ADAPT global rail). It is
   // injected as window.__ADAPT_LOCATION (an app2 slug) before this script
   // runs. Fall back to 'masticbeach' if absent or unknown.
-  const _injLoc = (typeof window !== "undefined" && window.__ADAPT_LOCATION
-                   && LOCATIONS[window.__ADAPT_LOCATION])
-                  ? window.__ADAPT_LOCATION : "masticbeach";
+  // On its own (GitHub Pages) the page reads ?location=<slug> instead.
+  const _urlLoc = urlLocation();
+  const _injLoc = (IS_EMBEDDED && LOCATIONS[window.__ADAPT_LOCATION]) ? window.__ADAPT_LOCATION
+                : (!IS_EMBEDDED && _urlLoc && LOCATIONS[_urlLoc]) ? _urlLoc : "masticbeach";
   const [curLoc, setCurLoc] = useState(_injLoc);
   const curLocRef = useRef(curLoc);
-  // {uid: USGS 3DEP ground, ft} when the app sent it for this location, else null
-  const demFt = useMemo(() => gelevData(curLoc), [curLoc]);
+  // {uid: USGS 3DEP ground, ft} for the ground-elevation flags, else null. The
+  // ADAPT app injects it; on GitHub Pages it is ground_3dep/<slug>.json.
+  const [demFt, setDemFt] = useState(() => gelevData(curLoc));
+  useEffect(() => {
+    let off = false;
+    const inj = gelevData(curLoc);
+    setDemFt(inj);
+    if (inj || IS_EMBEDDED || !(LOCATIONS[curLoc] || {}).ground3dep || !/^https?:$/.test(window.location.protocol)) return;
+    fetch("ground_3dep/" + curLoc + ".json")
+      .then(r => (r.ok ? r.json() : null))
+      .then(j => { if (!off && j && j.ft) setDemFt(j.ft); })
+      .catch(() => {});
+    return () => { off = true; };
+  }, [curLoc]);
+  // On GitHub Pages keep ?location= in the address bar, so the link can be shared.
+  useEffect(() => {
+    if (IS_EMBEDDED) return;
+    try { window.history.replaceState(null, "", "?location=" + curLoc); } catch (e) {}
+  }, [curLoc]);
 
   const switchLocation = useCallback(async (newLoc) => {
     if (newLoc === curLocRef.current) return;
@@ -1536,6 +1566,39 @@ function App() {
     }
   };
 
+  // ─── Full screen ───
+  // The whole tool fills the screen. Inside ADAPT this needs the iframe to allow
+  // full screen; where the browser refuses, the GitHub Pages copy opens in a new tab.
+  const [isFull, setIsFull] = useState(false);
+  useEffect(() => {
+    const onFs = () => {
+      setIsFull(!!(document.fullscreenElement || document.webkitFullscreenElement));
+      setTimeout(() => { if (mapInst.current) mapInst.current.invalidateSize(); }, 250);
+    };
+    document.addEventListener("fullscreenchange", onFs);
+    document.addEventListener("webkitfullscreenchange", onFs);
+    return () => {
+      document.removeEventListener("fullscreenchange", onFs);
+      document.removeEventListener("webkitfullscreenchange", onFs);
+    };
+  }, []);
+  const openStandalone = () => {
+    if (IS_EMBEDDED) window.open(STANDALONE_URL + "?location=" + encodeURIComponent(curLocRef.current), "_blank");
+    else showToast("This browser does not allow full screen here", "error");
+  };
+  const toggleFullscreen = () => {
+    const d = document, el = d.documentElement;
+    if (d.fullscreenElement || d.webkitFullscreenElement) {
+      const exit = d.exitFullscreen || d.webkitExitFullscreen;
+      if (exit) exit.call(d);
+      return;
+    }
+    const req = el.requestFullscreen || el.webkitRequestFullscreen;
+    const ok = d.fullscreenEnabled || d.webkitFullscreenEnabled;
+    if (!req || !ok) { openStandalone(); return; }
+    try { Promise.resolve(req.call(el)).catch(openStandalone); } catch (e) { openStandalone(); }
+  };
+
   const [fetchingElev, setFetchingElev] = useState(false);
   const autoFetchElevation = async () => {
     if (!selected) return;
@@ -1622,10 +1685,15 @@ function App() {
       <div style={{width:"100%",borderBottom:"1px solid #1e293b",background:"linear-gradient(180deg,#0f172a,#111827)",flexShrink:0,position:"relative",zIndex:2000}}>
         <div style={{padding:"7px 12px",display:"flex",flexDirection:"row",flexWrap:"wrap",alignItems:"center",gap:"8px 9px"}}>
 
-          {/* Location (read-only — driven by the ADAPT global rail) */}
+          {/* Location: read-only in ADAPT (its location selector drives it); a selector on GitHub Pages */}
           <div style={{display:"flex",alignItems:"center",gap:6,flex:"0 0 auto",padding:"5px 10px",borderRadius:7,background:"#1e293b",border:"1px solid #334155",whiteSpace:"nowrap"}}>
             <span style={{fontSize:13}}>📍</span>
-            <span style={{fontSize:12,fontWeight:600,color:"#e2e8f0"}}>{LOCATIONS[curLoc].name}</span>
+            {IS_EMBEDDED
+              ? <span style={{fontSize:12,fontWeight:600,color:"#e2e8f0"}}>{LOCATIONS[curLoc].name}</span>
+              : <select value={curLoc} onChange={e => switchLocation(e.target.value)} disabled={loading}
+                  style={{fontSize:12,fontWeight:600,color:"#e2e8f0",background:"#1e293b",border:"none",outline:"none",cursor:"pointer"}}>
+                  {Object.entries(LOCATIONS).map(([k, v]) => <option key={k} value={k}>{v.name}</option>)}
+                </select>}
             <span style={{fontSize:11,color:"#64748b"}}>· {buildings.length}</span>
           </div>
 
@@ -1790,6 +1858,15 @@ function App() {
               )}
             </div>
           </Popover>
+
+          {/* Full screen (Esc leaves it) */}
+          <button onClick={toggleFullscreen} title={isFull ? "Leave full screen (Esc)" : "Full screen"}
+            style={{...tbBtnL("#334155"), marginLeft:"auto"}}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
+              <path d={isFull ? "M9 3v6H3M15 3v6h6M9 21v-6H3M15 21v-6h6" : "M3 9V3h6M21 9V3h-6M3 15v6h6M21 15v6h-6"}/>
+            </svg>
+            {isFull ? "Exit full screen" : "Full screen"}
+          </button>
 
         </div>
       </div>
@@ -2147,13 +2224,11 @@ function PasswordGate({ onUnlock }) {
 }
 
 function Root() {
-  // Password gate removed for the embedded ADAPT tab: app1 already
-  // authenticates the user before this component is ever rendered.
-  // To restore the standalone gate, revert to the commented version below.
+  // Inside ADAPT the section password already applies. On its own (GitHub
+  // Pages) the tool keeps its own password gate.
+  const [authed, setAuthed] = React.useState(IS_EMBEDDED);
+  if (!authed) return <PasswordGate onUnlock={() => setAuthed(true)} />;
   return <App />;
-  // const [authed, setAuthed] = React.useState(false);
-  // if (!authed) return <PasswordGate onUnlock={() => setAuthed(true)} />;
-  // return <App />;
 }
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
