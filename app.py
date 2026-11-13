@@ -121,6 +121,8 @@ def _run_page(key, module, title, fn):
     ui.dismiss_first_load_page_not_found()
     registry = ui.load_location_registry()
     data_store, available_locations = X.get_data_store()
+    # Places with survey data only (no analysis yet) are listed too.
+    available_locations = sorted(set(available_locations) | set(ui.survey_only_names(registry)))
     location = X.ensure_location_state(available_locations, registry)
 
     if module is None:                       # landing page: no sidebar
@@ -151,6 +153,12 @@ def _run_page(key, module, title, fn):
         ui.footer()
         return
     if module == "developer" and not ui.developer_gate():
+        _sidebar_tail(module, None, title)
+        ui.footer()
+        return
+    # A survey-only place has no results: only the NSI survey tool opens.
+    if location and ui.is_survey_only(registry, location) and key != "dev_nsi":
+        ui.survey_only_note(location)
         _sidebar_tail(module, None, title)
         ui.footer()
         return

@@ -34,7 +34,8 @@ def render(ctx):
     # Pass the global location into the embedded tool (it keys locations by
     # slug: 'Mastic Beach' -> 'masticbeach'). The plain <script> runs before
     # Babel transpiles the app, so window.__ADAPT_LOCATION is set in time.
-    slug = _re.sub(r"[^a-z0-9]", "", str(ctx.selected_location or "").lower())
+    cfg = ui.location_cfg(ctx.registry, ctx.selected_location) or {}
+    slug = cfg.get("survey_key") or _re.sub(r"[^a-z0-9]", "", str(ctx.selected_location or "").lower())
     inject = '<script>window.__ADAPT_LOCATION = "%s";</script>\n' % slug
     anchor = '<script type="text/babel"'
     html = html.replace(anchor, inject + anchor, 1)

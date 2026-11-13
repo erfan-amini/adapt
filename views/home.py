@@ -58,7 +58,10 @@ def render(ctx):
         X.location_selector(ctx.available_locations, ctx.registry, key="w_location_home", label="Community")
     # The landing page stays open; the sections ask for the password.
     with c2:
-        st.markdown(f"<div class='adapt-siteline'>{_site_line(ctx)}</div>", unsafe_allow_html=True)
+        line = _site_line(ctx)
+        if not line and ui.is_survey_only(ctx.registry, ss.cv_location):
+            line = "Building survey data only &nbsp;·&nbsp; no flood analysis yet"
+        st.markdown(f"<div class='adapt-siteline'>{line}</div>", unsafe_allow_html=True)
 
     # Each card is one click: the HTML card is drawn, and a full-size,
     # invisible page link is laid over it (see the st-key-go_ rules in ui.py).

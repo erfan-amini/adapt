@@ -547,6 +547,28 @@ def is_protected(cfg):
     return bool((cfg or {}).get("protected", False))
 
 
+def survey_only_names(reg):
+    """Display names of locations that have survey data but no analysis yet."""
+    return [cfg.get("name", slug) for slug, cfg in (reg or {}).items() if cfg.get("survey_only")]
+
+
+def is_survey_only(reg, name):
+    return bool((location_cfg(reg, name) or {}).get("survey_only"))
+
+
+def survey_only_note(name):
+    st.markdown("<div style='height:1rem'></div>", unsafe_allow_html=True)
+    _, container, _ = st.columns([1, 1.6, 1])
+    with container:
+        st.markdown(
+            "<div class='adapt-card accent'><div class='icon'>📍</div>"
+            f"<h3>No analysis yet for {name}</h3>"
+            "<p>The building data for this place are in <b>Developer → NSI survey tool</b>. "
+            "Flood levels and damage results will appear here once the model has been run.</p></div>",
+            unsafe_allow_html=True,
+        )
+
+
 def any_protected(reg):
     return any(is_protected(cfg) for cfg in (reg or {}).values())
 

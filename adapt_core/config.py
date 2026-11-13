@@ -82,6 +82,15 @@ LOCATION_DEFAULTS = {
                         "Bay and the Chesapeake Bay. Its low-lying necks, from Guinea to Ware Neck, face tidal "
                         "flooding, storm surge and some of the fastest relative sea-level rise on the US East "
                         "Coast.")},
+    # Survey data only (no damage analysis yet): listed as a location so the NSI
+    # survey tool can open it; every other section says there is no analysis.
+    # "survey_key" is the place name the survey backend (Apps Script) knows.
+    "HamiltonHowardBeach": {"name": "Hamilton and Howard Beach", "survey_only": True,
+                    "survey_key": "hamiltonhowardbeach", "protected": True, "state": "NY",
+                    "blurb": (
+                        "Hamilton Beach and Howard Beach sit on the north shore of Jamaica Bay in Queens, "
+                        "New York. Building data are in the NSI survey tool; the flood damage analysis has "
+                        "not been run yet.")},
 }
 
 # ---------------------------------------------------------------------------
