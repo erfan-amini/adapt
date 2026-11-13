@@ -21,7 +21,7 @@
   <div id="root"></div>
   <script type="text/babel" data-presets="react">
 
-const { useState, useEffect, useRef, useCallback } = React;
+const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
 
 
@@ -292,6 +292,56 @@ async function fetchUSGSElevation(lng, lat) {
   return Math.round(elev * 100) / 100; // 2 decimal places, in feet NAVD88
 }
 
+// ─── Ground elevation check against USGS 3DEP ───
+// The ADAPT app injects window.__ADAPT_GROUND_3DEP = {loc, ft: {uid: ft NAVD88}}
+// for locations that have data/_survey/<slug>_ground_3dep.csv. Each building's
+// ground elevation (saved value, or the inventory value before a survey) is
+// checked against it:
+//   red    = a placeholder value from the CIRF inventory (0, 0.33 or 3.82 ft)
+//   purple = more than 4 ft below 3DEP
+//   yellow = 2 to 4 ft below 3DEP
+// Blank values, values within 2 ft of 3DEP and values above it get no flag.
+const GELEV_PLACEHOLDERS = [0, 0.328084, 3.8221784];
+const GELEV_LEVELS = ["red", "purple", "yellow"];
+const GELEV_STYLE = {
+  red:    { fill: "#dc2626", edge: "#7f1d1d", text: "#f87171", label: "Placeholder value (0, 0.33 or 3.82 ft)" },
+  purple: { fill: "#9333ea", edge: "#4c1d95", text: "#c084fc", label: "More than 4 ft below USGS 3DEP" },
+  yellow: { fill: "#facc15", edge: "#854d0e", text: "#fde047", label: "2 to 4 ft below USGS 3DEP" },
+};
+function gelevData(loc) {
+  const g = (typeof window !== "undefined") ? window.__ADAPT_GROUND_3DEP : null;
+  return (g && g.loc === loc && g.ft) ? g.ft : null;
+}
+function gelevCheck(dem, groundElev) {
+  const s = String(groundElev == null ? "" : groundElev).replace(/,/g, "").trim();
+  const g = s === "" ? NaN : Number(s);
+  const hasDem = typeof dem === "number" && isFinite(dem);
+  const res = { dem: hasDem ? dem : null, g: isFinite(g) ? g : null, gap: null, level: null, placeholder: false };
+  if (res.g === null) return res;
+  if (hasDem) res.gap = dem - g;                       // > 0: entered value is below 3DEP
+  if (GELEV_PLACEHOLDERS.some(p => Math.abs(g - p) < 0.0005)) { res.placeholder = true; res.level = "red"; return res; }
+  if (res.gap !== null && res.gap > 4) res.level = "purple";
+  else if (res.gap !== null && res.gap > 2) res.level = "yellow";
+  return res;
+}
+const _gelevUrls = {};
+function gelevIconUrl(level) {
+  if (!_gelevUrls[level]) {
+    const c = GELEV_STYLE[level];
+    // Pennant points left (the site-visit flag points right), pole foot on the point.
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="20" viewBox="0 0 16 20">`
+      + `<line x1="13" y1="1.5" x2="13" y2="19" stroke="${c.edge}" stroke-width="2" stroke-linecap="round"/>`
+      + `<path d="M12 2 L1.5 2 L4.5 5.5 L1.5 9 L12 9 Z" fill="${c.fill}" stroke="${c.edge}" stroke-width="1"/></svg>`;
+    _gelevUrls[level] = "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(svg);
+  }
+  return _gelevUrls[level];
+}
+const _gelevIcons = {};
+function gelevIcon(L, level) {
+  if (!_gelevIcons[level]) _gelevIcons[level] = L.icon({ iconUrl: gelevIconUrl(level), iconSize: [16, 20], iconAnchor: [13, 19] });
+  return _gelevIcons[level];
+}
+
 // ─── Cost Estimator (OLS regression on local building stock) ───
 // Uses all buildings in the current location with known gross area and
 // structure value to fit: structureValue = slope × grossArea + intercept
@@ -443,6 +493,7 @@ function App() {
   const mapInst = useRef(null);
   const markersRef = useRef({});
   const flagMarkersRef = useRef({});
+  const gelevMarkersRef = useRef({});   // ground-elevation flags, keyed by uid
 
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
   const mrkR = isMobile ? 10 : 7;
@@ -457,6 +508,8 @@ function App() {
                   ? window.__ADAPT_LOCATION : "masticbeach";
   const [curLoc, setCurLoc] = useState(_injLoc);
   const curLocRef = useRef(curLoc);
+  // {uid: USGS 3DEP ground, ft} when the app sent it for this location, else null
+  const demFt = useMemo(() => gelevData(curLoc), [curLoc]);
 
   const switchLocation = useCallback(async (newLoc) => {
     if (newLoc === curLocRef.current) return;
@@ -507,7 +560,7 @@ function App() {
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState(null);
   const [filter, setFilter] = useState("all");
-  const [advFilters, setAdvFilters] = useState({ flagged: "all", occClass: "all", foundation: "all", bldgType: "all" });
+  const [advFilters, setAdvFilters] = useState({ flagged: "all", occClass: "all", foundation: "all", bldgType: "all", gelev: "all" });
   const [devAction, setDevAction] = useState(null); // "move" | "add" | null
   const [devEdits, setDevEdits] = useState({ removed: [], moved: {}, added: [] });
   const [devDirty, setDevDirty] = useState(false);
@@ -758,8 +811,14 @@ function App() {
     }
     if (advFilters.foundation !== "all" && (d.foundationType || "").toUpperCase() !== advFilters.foundation) return false;
     if (advFilters.bldgType !== "all" && (d.buildingType || "").toUpperCase() !== advFilters.bldgType) return false;
+    if (demFt && advFilters.gelev !== "all" && advFilters.gelev !== "hide") {
+      const lv = isDemolished ? null : gelevCheck(demFt[b.uid], d.groundElev).level;
+      if (advFilters.gelev === "any" && !lv) return false;
+      if (advFilters.gelev === "none" && lv) return false;
+      if (GELEV_LEVELS.includes(advFilters.gelev) && lv !== advFilters.gelev) return false;
+    }
     return true;
-  }, [surveys, filter, advFilters]);
+  }, [surveys, filter, advFilters, demFt]);
 
   // Update markers style
   useEffect(() => {
@@ -837,6 +896,38 @@ function App() {
       }
     }
   }, [surveys, filter, advFilters, passesFilters, buildings, selected]);
+
+  // Ground-elevation flags (only where the app sent USGS 3DEP values). Kept in
+  // their own layer and updated in place, not rebuilt on every selection, since
+  // a location can have thousands of them.
+  useEffect(() => {
+    const L = window.L;
+    if (!L || !mapInst.current) return;
+    const cur = gelevMarkersRef.current;
+    const want = {};
+    if (demFt && advFilters.gelev !== "hide") {
+      buildings.forEach(b => {
+        const d = surveys[b.uid] || b.prefill || {};
+        if (d.flagged === "Demolished") return;
+        const lv = gelevCheck(demFt[b.uid], d.groundElev).level;
+        if (lv) want[b.uid] = { lv, lat: b.lat, lng: b.lng, show: passesFilters(b) };
+      });
+    }
+    Object.keys(cur).forEach(uid => {
+      const w = want[uid], e = cur[uid];
+      if (!w || e.lv !== w.lv || e.lat !== w.lat || e.lng !== w.lng) { e.m.remove(); delete cur[uid]; }
+    });
+    Object.entries(want).forEach(([uid, w]) => {
+      let e = cur[uid];
+      if (!e) {
+        const m = L.marker([w.lat, w.lng], { icon: gelevIcon(L, w.lv), interactive: true, keyboard: false, zIndexOffset: 200,
+                                              title: GELEV_STYLE[w.lv].label }).addTo(mapInst.current);
+        m.on("click", () => window.__sel && window.__sel(uid));
+        e = cur[uid] = { m, lv: w.lv, lat: w.lat, lng: w.lng, show: null };
+      }
+      if (e.show !== w.show) { e.m.setOpacity(w.show ? 1 : 0.08); e.show = w.show; }
+    });
+  }, [buildings, surveys, advFilters, passesFilters, demFt]);
 
   useEffect(() => {
     window.__sel = (uid) => {
@@ -1506,6 +1597,13 @@ function App() {
   const todoCount = buildings.filter(b => !(surveys[b.uid] && surveys[b.uid].savedAt)).length;
   const flaggedCount = buildings.filter(b => { const sv = surveys[b.uid]; const pf = b.prefill || {}; return (sv || pf).flagged === "Yes"; }).length;
   const demolishedCount = buildings.filter(b => { const sv = surveys[b.uid]; const pf = b.prefill || {}; return (sv || pf).flagged === "Demolished"; }).length;
+  const gelevCounts = { red: 0, purple: 0, yellow: 0 };
+  if (demFt) buildings.forEach(b => {
+    const d = surveys[b.uid] || b.prefill || {};
+    if (d.flagged === "Demolished") return;
+    const lv = gelevCheck(demFt[b.uid], d.groundElev).level;
+    if (lv) gelevCounts[lv]++;
+  });
   const selB = selected ? buildings.find(x => x.uid === selected) : null;
   // Filter-aware UIDs for Prev/Next navigation
   const filteredUids = buildings.filter(b => passesFilters(b)).map(b => b.uid);
@@ -1545,6 +1643,14 @@ function App() {
               <span title="Done"><span style={{display:"inline-block",width:8,height:8,borderRadius:"50%",background:"#22c55e",marginRight:3,verticalAlign:"middle"}}/>{doneCount}</span>
               {flaggedCount > 0 && <span title="Flagged" style={{color:"#f97316"}}>🚩{flaggedCount}</span>}
               {demolishedCount > 0 && <span title="Demolished" style={{color:"#94a3b8"}}>✕{demolishedCount}</span>}
+              {demFt && GELEV_LEVELS.map(k => (
+                <span key={k} onClick={()=>setAdvFilters(f=>({...f,gelev:f.gelev===k?"all":k}))}
+                  title={"Ground elevation: " + GELEV_STYLE[k].label + ". Click to show only these."}
+                  style={{color:GELEV_STYLE[k].text,cursor:"pointer",fontWeight:advFilters.gelev===k?800:400,
+                          textDecoration:advFilters.gelev===k?"underline":"none"}}>
+                  <img src={gelevIconUrl(k)} alt="" style={{height:12,verticalAlign:"-1px",marginRight:2}}/>{gelevCounts[k]}
+                </span>
+              ))}
             </span>
           </div>
 
@@ -1589,10 +1695,24 @@ function App() {
                 </select>
               </div>
             </div>
+            {demFt && (
+              <div style={{marginTop:8}}>
+                <label style={tbLbl}>Ground elevation vs USGS 3DEP</label>
+                <select value={advFilters.gelev} onChange={e=>setAdvFilters(f=>({...f,gelev:e.target.value}))} style={tbSel}>
+                  <option value="all">All buildings</option>
+                  <option value="any">Any ground flag ({gelevCounts.red + gelevCounts.purple + gelevCounts.yellow})</option>
+                  <option value="red">Red: placeholder value ({gelevCounts.red})</option>
+                  <option value="purple">Purple: more than 4 ft below 3DEP ({gelevCounts.purple})</option>
+                  <option value="yellow">Yellow: 2 to 4 ft below 3DEP ({gelevCounts.yellow})</option>
+                  <option value="none">No ground flag</option>
+                  <option value="hide">Hide ground flags</option>
+                </select>
+              </div>
+            )}
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:9}}>
               <span style={{fontSize:10,color:"#94a3b8"}}>{filteredUids.length} / {buildings.length} shown</span>
               {Object.values(advFilters).some(v=>v!=="all") && (
-                <button onClick={()=>setAdvFilters({flagged:"all",occClass:"all",foundation:"all",bldgType:"all"})} style={{padding:"3px 10px",borderRadius:4,border:"none",cursor:"pointer",background:"#334155",color:"#f97316",fontSize:10,fontWeight:600}}>Clear</button>
+                <button onClick={()=>setAdvFilters({flagged:"all",occClass:"all",foundation:"all",bldgType:"all",gelev:"all"})} style={{padding:"3px 10px",borderRadius:4,border:"none",cursor:"pointer",background:"#334155",color:"#f97316",fontSize:10,fontWeight:600}}>Clear</button>
               )}
             </div>
           </Popover>
@@ -1749,6 +1869,11 @@ function App() {
                     {surveys[selected] && surveys[selected].savedAt && <span style={{marginLeft:4,fontSize:9,padding:"2px 6px",borderRadius:4,background:"#166534",color:"#4ade80"}}>SAVED</span>}
                     {((surveys[selected] || (selB && selB.prefill) || {}).flagged === "Yes") && <span style={{marginLeft:4,fontSize:9,padding:"2px 6px",borderRadius:4,background:"#431407",color:"#fb923c"}}>🚩</span>}
                     {((surveys[selected] || (selB && selB.prefill) || {}).flagged === "Demolished") && <span style={{marginLeft:4,fontSize:9,padding:"2px 6px",borderRadius:4,background:"#334155",color:"#94a3b8"}}>✕ DEMOLISHED</span>}
+                    {demFt && (() => {
+                      const d0 = surveys[selected] || (selB && selB.prefill) || {};
+                      const lv = d0.flagged === "Demolished" ? null : gelevCheck(demFt[selected], d0.groundElev).level;
+                      return lv ? <span title={"Ground elevation: " + GELEV_STYLE[lv].label} style={{marginLeft:4,fontSize:9,padding:"2px 6px",borderRadius:4,background:"#1e293b",color:GELEV_STYLE[lv].text,border:"1px solid " + GELEV_STYLE[lv].fill}}><img src={gelevIconUrl(lv)} alt="" style={{height:10,verticalAlign:"-1px",marginRight:3}}/>GROUND</span> : null;
+                    })()}
                   </div>
                   <div style={{fontSize:10,color:"#64748b",marginTop:1}}>{selB.lat.toFixed(6)}, {selB.lng.toFixed(6)}</div>
                 </div>
@@ -1858,6 +1983,23 @@ function App() {
                     </div>
                   </FLD>
                 </div>
+                {demFt && (() => {
+                  const gc = gelevCheck(demFt[selected], form.groundElev);
+                  const box = (edge, kids) => <div style={{marginTop:-2,padding:"5px 8px",borderRadius:6,background:"#0b1220",borderLeft:"3px solid " + edge,fontSize:10,lineHeight:1.45,color:"#cbd5e1"}}>{kids}</div>;
+                  if (gc.dem === null) return box("#334155", <span>No saved 3DEP value for this point. 📐 looks it up live.</span>);
+                  const f2 = v => v.toFixed(2);
+                  const st = gc.level ? GELEV_STYLE[gc.level] : null;
+                  let msg = "No ground elevation entered.";
+                  if (gc.g !== null) {
+                    const rel = Math.abs(gc.gap) < 0.005 ? "the same as 3DEP" : gc.gap > 0 ? f2(gc.gap) + " ft below 3DEP" : f2(-gc.gap) + " ft above 3DEP";
+                    msg = "Entered " + f2(gc.g) + " ft, " + rel + ".";
+                  }
+                  const flagTxt = { red: "Red flag: placeholder value.", purple: "Purple flag: more than 4 ft below 3DEP.", yellow: "Yellow flag: 2 to 4 ft below 3DEP." };
+                  return box(st ? st.fill : "#22c55e", <span>
+                    <b style={{color:"#e2e8f0"}}>USGS 3DEP ground: {f2(gc.dem)} ft</b> (1 m lidar). {msg}
+                    {st && <span style={{display:"block",color:st.text}}><img src={gelevIconUrl(gc.level)} alt="" style={{height:10,verticalAlign:"-1px",marginRight:3}}/>{flagTxt[gc.level]} 📐 fills in the 3DEP value; Save to keep it.</span>}
+                  </span>);
+                })()}
                 <div style={{display:"flex",gap:6,alignItems:"flex-end"}}>
                   <FLD label="Structure Value ($) *" s={{flex:1}}>
                     <input type="number" value={form.structureValue} onChange={e=>setForm(f=>({...f,structureValue:e.target.value}))} style={inp}/>

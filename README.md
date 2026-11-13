@@ -63,6 +63,8 @@ views/
 docs/assistant_knowledge.md  what the assistant knows; edit when methods or pages change
 data/
   _curves/                 FEMA/Hazus FAST tables (shared)
+  _survey/                 survey tool support data, e.g. <slug>_ground_3dep.csv (USGS 3DEP ground
+                           per building for the ground-elevation flags; tools/make_ground_3dep.py)
   <Location>/              one folder per location (inputs + results, see below)
   locations.json           per-location settings edited in the Developer module
 assets/                    logo.png, nsi_tool.html (field survey tool)

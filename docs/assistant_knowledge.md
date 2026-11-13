@@ -73,7 +73,10 @@ and name at the top of the sidebar returns to the landing page.
   home report, description), inventory upload or Google Sheet pull with
   column mapping, water-level upload, curve tables.
 - NSI survey tool: the field survey tool for checking building attributes
-  (Google Street View based).
+  (Google Street View based). Where data/_survey/<slug>_ground_3dep.csv exists
+  (now Hamilton and Howard Beach), it flags ground elevations against USGS 3DEP
+  1 m lidar: red = placeholder value (0, 0.33 or 3.82 ft), purple = more than
+  4 ft below 3DEP, yellow = 2 to 4 ft below 3DEP.
 - Fragility curves: the FEMA/Hazus depth-damage curves by occupancy.
 - Run the model: runs the damage and adaptation model for a community, shows
   QA, missing values, saves the result bundle, zips it, and can publish it

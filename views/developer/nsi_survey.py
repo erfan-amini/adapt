@@ -1,12 +1,33 @@
 """Developer: embedded NSI field-survey tool (React/Leaflet, Google Sheets backend)."""
+import json as _json
 import os
 import re as _re
 
+import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as _components
 
 from adapt_core import config as C
 from adapt_core import ui
+
+SURVEY_DATA_DIR = os.path.join(C.DATA_DIR, "_survey")
+
+
+@st.cache_data(show_spinner=False)
+def _read_ground_3dep(path, mtime):
+    df = pd.read_csv(path, usecols=["uid", "ground_3dep_ft"]).dropna()
+    return {str(u): round(float(v), 2) for u, v in zip(df["uid"], df["ground_3dep_ft"])}
+
+
+def _ground_3dep(slug):
+    """{uid: 3DEP ground elevation (ft NAVD88)} for a survey location, or {}."""
+    path = os.path.join(SURVEY_DATA_DIR, f"{slug}_ground_3dep.csv")
+    if not slug or not os.path.exists(path):
+        return {}
+    try:
+        return _read_ground_3dep(path, os.path.getmtime(path))
+    except Exception:
+        return {}
 
 
 def render(ctx):
@@ -37,6 +58,18 @@ def render(ctx):
     cfg = ui.location_cfg(ctx.registry, ctx.selected_location) or {}
     slug = cfg.get("survey_key") or _re.sub(r"[^a-z0-9]", "", str(ctx.selected_location or "").lower())
     inject = '<script>window.__ADAPT_LOCATION = "%s";</script>\n' % slug
+    # USGS 3DEP ground elevation per building (data/_survey/<slug>_ground_3dep.csv).
+    # When present, the tool flags ground elevations that are placeholders or
+    # sit well below 3DEP.
+    dem = _ground_3dep(slug)
+    if dem:
+        payload = _json.dumps({"loc": slug, "ft": dem}, separators=(",", ":")).replace("</", "<\\/")
+        inject += "<script>window.__ADAPT_GROUND_3DEP = %s;</script>\n" % payload
+        st.caption(
+            "Ground elevation flags compare each building's ground elevation with USGS 3DEP "
+            "(1 m bare-earth lidar). Red: a placeholder value (0, 0.33 or 3.82 ft). Purple: more than "
+            "4 ft below 3DEP. Yellow: 2 to 4 ft below 3DEP. The building panel shows the 3DEP value."
+        )
     anchor = '<script type="text/babel"'
     html = html.replace(anchor, inject + anchor, 1)
     with ctx._keyed_container("nsi_embed"):
