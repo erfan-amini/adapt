@@ -101,28 +101,45 @@ function urlLocation() {
   } catch (e) { return null; }
 }
 
+// ─── Backend password ───
+// The backend refuses every request without the project password. It is never
+// stored in this file: on GitHub Pages the user types it (kept for the browser
+// session); the ADAPT app passes the password its user entered as
+// window.__ADAPT_API_KEY. A refusal sends "nsi-auth-failed" and the password
+// screen comes back.
+const AUTH_ERROR = "Wrong or missing password";
+let API_KEY = "";
+try { API_KEY = (IS_EMBEDDED && window.__ADAPT_API_KEY) || sessionStorage.getItem("nsi-key") || ""; } catch (e) {}
+function setApiKey(k) {
+  API_KEY = k || "";
+  try { if (API_KEY) sessionStorage.setItem("nsi-key", API_KEY); else sessionStorage.removeItem("nsi-key"); } catch (e) {}
+}
+
 // ─── Robust fetch helper: throws on non-OK responses ───
 async function postJson(payload) {
   const r = await fetch(API_URL, {
     method: "POST",
-    body: JSON.stringify(payload),
+    body: JSON.stringify({ ...payload, key: API_KEY }),
   });
   if (!r.ok) {
     const text = await r.text().catch(() => "");
     throw new Error(`HTTP ${r.status}: ${text.slice(0, 200)}`);
   }
   const ct = r.headers.get("content-type") || "";
-  return ct.includes("application/json") ? r.json() : r.text();
+  const out = ct.includes("application/json") ? await r.json() : await r.text();
+  if (out && out.error === AUTH_ERROR) { setApiKey(""); window.dispatchEvent(new Event("nsi-auth-failed")); }
+  return out;
 }
 
 async function fetchSurveys(location) {
   try {
-    const r = await fetch(API_URL + "?location=" + encodeURIComponent(location || "shinnecock"));
-    if (!r.ok) {
-      const text = await r.text().catch(() => "");
-      throw new Error(`HTTP ${r.status}: ${text.slice(0, 200)}`);
+    let raw = await postJson({ action: "read", location: location || "shinnecock" });
+    if (raw && typeof raw.error === "string" && raw.error.startsWith("Unknown action")) {
+      // Backend from before the password (no "read" action): read with GET.
+      const r = await fetch(API_URL + "?location=" + encodeURIComponent(location || "shinnecock"));
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      raw = await r.json();
     }
-    const raw = await r.json();
     if (raw.error) throw new Error(raw.error);
     // Map Google Sheet column names to form field names
     const mapped = {};
@@ -2184,22 +2201,26 @@ function abtn(bg) {
   
 
 function PasswordGate({ onUnlock }) {
+  // The backend checks the password; nothing here knows it.
   const [pw, setPw] = React.useState("");
-  const [error, setError] = React.useState(false);
+  const [error, setError] = React.useState("");
+  const [busy, setBusy] = React.useState(false);
 
-  React.useEffect(() => {
-    const saved = sessionStorage.getItem("nsi-auth");
-    if (saved === "ok") onUnlock();
-  }, []);
-
-  const handleSubmit = () => {
-    if (pw === atob("REMOVED")) {
-      sessionStorage.setItem("nsi-auth", "ok");
-      onUnlock();
-    } else {
-      setError(true);
-      setTimeout(() => setError(false), 2000);
-    }
+  const handleSubmit = async () => {
+    if (!pw || busy) return;
+    setBusy(true); setError("");
+    const prev = API_KEY;
+    API_KEY = pw;
+    try {
+      const resp = await postJson({ action: "auth" });
+      const oldBackend = resp && typeof resp.error === "string" && resp.error.startsWith("Unknown action");
+      if (resp && (resp.ok || oldBackend)) { setApiKey(pw); onUnlock(); return; }
+      API_KEY = prev;
+      setError(resp && resp.error === AUTH_ERROR ? "Incorrect password" : "Could not check the password: " + ((resp && resp.error) || "no answer"));
+    } catch (e) {
+      API_KEY = prev;
+      setError("Could not reach the server: " + e.message);
+    } finally { setBusy(false); }
   };
 
   return (
@@ -2210,23 +2231,29 @@ function PasswordGate({ onUnlock }) {
         <p style={{color:"#64748b",fontSize:13,marginBottom:24}}>Enter password to continue</p>
         <div style={{display:"flex",gap:8}}>
           <input type="password" value={pw}
-            onChange={e=>{setPw(e.target.value);setError(false);}}
+            onChange={e=>{setPw(e.target.value);setError("");}}
             onKeyDown={e=>e.key==="Enter"&&handleSubmit()}
             placeholder="Password" autoFocus
             style={{flex:1,padding:"12px 16px",borderRadius:8,border:error?"2px solid #dc2626":"1px solid #334155",background:"#1e293b",color:"#e2e8f0",fontSize:15,outline:"none",boxSizing:"border-box"}}
           />
-          <button onClick={handleSubmit} style={{padding:"12px 24px",borderRadius:8,border:"none",cursor:"pointer",background:"#3b82f6",color:"#fff",fontWeight:700,fontSize:14}}>Go</button>
+          <button onClick={handleSubmit} disabled={busy} style={{padding:"12px 24px",borderRadius:8,border:"none",cursor:busy?"wait":"pointer",background:"#3b82f6",color:"#fff",fontWeight:700,fontSize:14}}>{busy ? "…" : "Go"}</button>
         </div>
-        {error && <div style={{marginTop:10,color:"#f87171",fontSize:13,fontWeight:600}}>Incorrect password</div>}
+        {error && <div style={{marginTop:10,color:"#f87171",fontSize:13,fontWeight:600}}>{error}</div>}
       </div>
     </div>
   );
 }
 
 function Root() {
-  // Inside ADAPT the section password already applies. On its own (GitHub
-  // Pages) the tool keeps its own password gate.
-  const [authed, setAuthed] = React.useState(IS_EMBEDDED);
+  // Opens straight away when a password is already at hand (from ADAPT, or
+  // typed earlier in this browser session); the backend still checks it on
+  // every request, and a refusal brings the password screen back.
+  const [authed, setAuthed] = React.useState(!!API_KEY);
+  React.useEffect(() => {
+    const off = () => setAuthed(false);
+    window.addEventListener("nsi-auth-failed", off);
+    return () => window.removeEventListener("nsi-auth-failed", off);
+  }, []);
   if (!authed) return <PasswordGate onUnlock={() => setAuthed(true)} />;
   return <App />;
 }

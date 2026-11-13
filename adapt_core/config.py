@@ -12,6 +12,10 @@ LOGO_PATH = os.path.join(ASSETS_DIR, "logo.png")        # mark only (sidebar)
 LOGO_FULL_CANDIDATES = [os.path.join(ASSETS_DIR, "logo_full.png"),
                         os.path.join(APP_ROOT, "logo.png")]   # mark + wordmark (home page)
 NSI_TOOL_HTML = os.path.join(ASSETS_DIR, "nsi_tool.html")
+# NSI survey backend (Google Apps Script web app over the "NSI Survey Data" sheet).
+# Every request needs the project password; the survey tool uses the same URL.
+SURVEY_API_URL = ("https://script.google.com/macros/s/"
+                  "AKfycbxIiaRjGRV1_c-f1z1LgGPUHY_XFhdbUMv4bpC01Y5go9DtYm2G2AaROnlmzJuU9X1W/exec")
 LOCATIONS_FILE = os.path.join(DATA_DIR, "locations.json")
 
 # ---------------------------------------------------------------------------
@@ -40,8 +44,9 @@ Y_NOW = 2025
 # Per-location defaults shipped with the app. The Developer module can edit
 # these and add new locations; edits are stored in data/locations.json.
 # "protected": the location's results are shown only after the access password
-# (all four project locations). The password comes from Streamlit secrets
-# ([access] password) and falls back to the project's long-standing one.
+# (every project location). The password is checked against Streamlit secrets
+# ([access] password) when set, otherwise by the NSI survey backend
+# (SURVEY_API_URL), which keeps it in its script properties. It is never in the code.
 LOCATION_DEFAULTS = {
     "Shinnecock":  {"name": "Shinnecock", "bfe_ft": 9.0, "elev_min_shortfall_ft": 1.0,
                     "restrict_manuf": False, "mobile_homes_dominated": False, "protected": True,

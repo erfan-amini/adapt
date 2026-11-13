@@ -525,13 +525,12 @@ def footer():
 # ---------------------------------------------------------------------------
 # Access gate for protected locations
 # ---------------------------------------------------------------------------
-LEGACY_PASSWORD = "REMOVED"
 
 
 def access_password():
-    """Password that unlocks protected locations: Streamlit secrets
-    ([access] password) or the ACCESS_PASSWORD environment variable, falling
-    back to the project's long-standing password."""
+    """The app's copy of the project password: Streamlit secrets ([access]
+    password) or the ACCESS_PASSWORD environment variable. None when neither is
+    set; the password is never written in the code (the repo is public)."""
     try:
         if secrets_available():
             if "access" in st.secrets and "password" in st.secrets["access"]:
@@ -540,7 +539,36 @@ def access_password():
                 return str(st.secrets["access_password"])
     except Exception:
         pass
-    return os.environ.get("ACCESS_PASSWORD") or LEGACY_PASSWORD
+    return os.environ.get("ACCESS_PASSWORD") or None
+
+
+def _backend_accepts(entered):
+    """Ask the NSI survey backend (Apps Script) whether the password is right."""
+    import urllib.request
+    try:
+        req = urllib.request.Request(C.SURVEY_API_URL, method="POST",
+                                     data=json.dumps({"action": "auth", "key": entered}).encode(),
+                                     headers={"Content-Type": "text/plain;charset=utf-8"})
+        with urllib.request.urlopen(req, timeout=20) as r:
+            out = json.loads(r.read().decode("utf-8") or "{}")
+        return bool(out.get("ok"))
+    except Exception:
+        return False
+
+
+def check_password(entered):
+    """True when the entered password is the project password. Uses the app's
+    secret when one is set, otherwise asks the survey backend, which holds the
+    same password. A correct entry is kept for the session so the NSI survey
+    tool can send it to the backend."""
+    entered = str(entered or "")
+    if not entered:
+        return False
+    pw = access_password()
+    ok = (entered == pw) if pw else _backend_accepts(entered)
+    if ok:
+        st.session_state["survey_key"] = entered
+    return ok
 
 
 def is_protected(cfg):
@@ -585,7 +613,6 @@ def location_unlocked(location_name):
 def app_gate_card():
     """Shown when a section is opened before the password is in. One correct
     entry opens every section and location for the rest of the session."""
-    pw = access_password()
     st.markdown("<div style='height:1rem'></div>", unsafe_allow_html=True)
     _, container, _ = st.columns([1, 1.25, 1])
     with container:
@@ -599,7 +626,7 @@ def app_gate_card():
             entered = st.text_input("Password", type="password")
             ok = st.form_submit_button("Open", type="primary", use_container_width=True)
         if ok:
-            if entered == pw:
+            if check_password(entered):
                 st.session_state["app_unlocked"] = True
                 st.rerun()
             else:
@@ -611,7 +638,6 @@ def location_gate(location_name, cfg, compact=False):
     password form (a card, or a compact inline version) and return False."""
     if not is_protected(cfg) or location_unlocked(location_name):
         return True
-    pw = access_password()
     form_key = f"gate_{'c' if compact else 'f'}_{slugify(location_name)}"
     if compact:
         # One row: password field + Unlock. A wrong password shows a toast so
@@ -622,7 +648,7 @@ def location_gate(location_name, cfg, compact=False):
                                    placeholder=f"🔒 Password for {location_name} results")
             ok = b.form_submit_button("Unlock", type="primary", use_container_width=True)
         if ok:
-            if entered == pw:
+            if check_password(entered):
                 st.session_state.setdefault("unlocked_locations", set()).add(location_name)
                 st.rerun()
             else:
@@ -642,7 +668,7 @@ def location_gate(location_name, cfg, compact=False):
             entered = st.text_input("Access password", type="password")
             ok = st.form_submit_button("Unlock", type="primary", use_container_width=True)
         if ok:
-            if entered == pw:
+            if check_password(entered):
                 st.session_state.setdefault("unlocked_locations", set()).add(location_name)
                 st.rerun()
             else:

@@ -58,6 +58,12 @@ def render(ctx):
     cfg = ui.location_cfg(ctx.registry, ctx.selected_location) or {}
     slug = cfg.get("survey_key") or _re.sub(r"[^a-z0-9]", "", str(ctx.selected_location or "").lower())
     inject = '<script>window.__ADAPT_LOCATION = "%s";</script>\n' % slug
+    # The survey backend refuses requests without the project password. Pass on
+    # the one this user entered to open the app (never stored in the code); if
+    # there is none, the tool asks for it itself.
+    key = st.session_state.get("survey_key", "")
+    if key:
+        inject += "<script>window.__ADAPT_API_KEY = %s;</script>\n" % _json.dumps(str(key)).replace("</", "<\\/")
     # USGS 3DEP ground elevation per building (data/_survey/<slug>_ground_3dep.csv).
     # When present, the tool flags ground elevations that are placeholders or
     # sit well below 3DEP.

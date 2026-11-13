@@ -28,8 +28,11 @@ Data and settings (`flood_levels`).
 
 Access: when any location is flagged `protected` in `data/locations.json` (all four by
 default), the landing page stays open and every section asks for the access password; one
-entry opens all sections and locations for the session. The password is `[access] password` in Streamlit secrets,
-falling back to the project's long-standing password. The Developer module also asks for
+entry opens all sections and locations for the session. The password is checked against `[access] password` in Streamlit secrets when it is set,
+and otherwise by the NSI survey backend (Apps Script), which keeps it in its script
+properties (`SURVEY_PASSWORD`). The password is never written in the code. A correct entry
+is passed to the NSI survey tool, which sends it with every request to the backend; the
+backend refuses requests without it. The Developer module also asks for
 `[developer] password` when one is set.
 
 The damage and adaptation model runs inside the app (`adapt_core/engine.py`),

@@ -255,8 +255,8 @@ def render(ctx):
                                    "this flag is written to the metadata for transparency.")
         protected = g.checkbox("Password protected (results shown only after the access password)",
                                value=bool(cfg.get("protected", False)),
-                               help="The access password comes from Streamlit secrets ([access] password) and "
-                                    "falls back to the project's long-standing password.")
+                               help="The access password is Streamlit secrets ([access] password) when set; "
+                                    "otherwise the NSI survey backend checks it.")
         blurb = st.text_area("Short description shown on the Home and Overview pages", value=cfg.get("blurb", ""),
                              height=90)
         st.markdown("**Present-day flood levels for the home report** (ft NAVD88; leave 0 to omit a row). "
