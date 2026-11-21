@@ -19,12 +19,31 @@ SURVEY_API_URL = ("https://script.google.com/macros/s/"
 LOCATIONS_FILE = os.path.join(DATA_DIR, "locations.json")
 
 # App variant. app_beta.py sets ADAPT_VARIANT=beta to run ADAPT Beta
-# (adapt-beta.streamlit.app): the same app for temporary testing, with Mastic
-# Beach and Gloucester County only and no password on the app or its locations.
+# (adapt-beta.streamlit.app): the same code and data as ADAPT, so it updates
+# with every push, showing New York locations only and with no app password.
+# Locations in BETA_BUILDING_LOCK keep their building-level pages behind the
+# project password; their community-level pages are open.
 VARIANT = os.environ.get("ADAPT_VARIANT", "").strip().lower()
 VARIANT_BETA = VARIANT == "beta"
-VISIBLE_SLUGS = ("MasticBeach", "Gloucester") if VARIANT_BETA else None
+BETA_STATES = ("NY",)
+BETA_BUILDING_LOCK = ("Shinnecock",)
 APP_NAME = "ADAPT Beta" if VARIANT_BETA else "ADAPT"
+
+
+def visible_slugs():
+    """Location slugs ADAPT Beta shows: every location (built-in list and
+    data/locations.json) whose state is in BETA_STATES. None in ADAPT."""
+    if not VARIANT_BETA:
+        return None
+    import json
+    reg = {k: dict(v) for k, v in LOCATION_DEFAULTS.items()}
+    try:
+        with open(LOCATIONS_FILE, "r", encoding="utf-8") as fh:
+            for slug, cfg in json.load(fh).items():
+                reg.setdefault(slug, {}).update(cfg)
+    except Exception:
+        pass
+    return tuple(k for k, v in reg.items() if str(v.get("state", "")).upper() in BETA_STATES)
 
 # ---------------------------------------------------------------------------
 # Model constants (mirror AAA___Main_v14.m)

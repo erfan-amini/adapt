@@ -1,5 +1,6 @@
-"""ADAPT Beta: the ADAPT app for temporary testing, with Mastic Beach and
-Gloucester County only and no password.
+"""ADAPT Beta: the ADAPT app for temporary testing, with New York locations
+only and no app password. Shinnecock's building-level pages still ask for the
+project password.
 
 Deploy on Streamlit Community Cloud with this file as the main file. It runs
 app.py unchanged with ADAPT_VARIANT=beta (see adapt_core/config.py). The NSI

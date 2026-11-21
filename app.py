@@ -44,6 +44,8 @@ PAGES = [
     ("dev_run",     "developer", "Run the model",         "▶️", "dev-run",       "views.developer.run_model"),
 ]
 MODULE_PAGE_KEYS = {m: [p[0] for p in PAGES if p[1] == m] for m in C.MODULES}
+# Pages that show individual buildings (used by ADAPT Beta's building lock).
+BUILDING_PAGES = {"my_home", "dyn_maps", "my_building", "dev_data", "dev_run"}
 FIRST_PAGE = {m: keys[0] for m, keys in MODULE_PAGE_KEYS.items()}
 
 
@@ -148,6 +150,10 @@ def _run_page(key, module, title, fn):
     # Per-location gate: passes once the app password is in. The Developer
     # module also asks for a developer password if one is set in secrets.
     cfg = ui.location_cfg(registry, location) if location else None
+    # ADAPT Beta: a location marked protect_buildings opens its community pages
+    # but keeps building-level pages behind the password.
+    if cfg and cfg.get("protect_buildings") and key in BUILDING_PAGES:
+        cfg = {**cfg, "protected": True}
     if location and not ui.location_gate(location, cfg):
         _sidebar_tail(module, None, title)
         ui.footer()

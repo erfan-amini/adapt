@@ -32,8 +32,10 @@ def load_location_registry():
                 reg[slug].update(cfg)
         except Exception as e:                     # a bad file must not kill the app
             st.warning(f"Could not read {os.path.basename(C.LOCATIONS_FILE)}: {e}")
-    if C.VISIBLE_SLUGS:                            # ADAPT Beta: listed locations only, no password
-        reg = {k: {**v, "protected": False} for k, v in reg.items() if k in C.VISIBLE_SLUGS}
+    vis = C.visible_slugs()
+    if vis is not None:                            # ADAPT Beta: NY locations, no app password
+        reg = {k: {**v, "protected": False, "protect_buildings": k in C.BETA_BUILDING_LOCK}
+               for k, v in reg.items() if k in vis}
     return reg
 
 
