@@ -207,8 +207,8 @@ GEMINI_BASE = os.environ.get("ADAPT_GEMINI_BASE", "https://generativelanguage.go
 
 def _gemini_pick_model(api_key):
     try:
-        r = requests.get(f"{GEMINI_BASE}/models",
-                         params={"key": api_key, "pageSize": 200}, timeout=15)
+        r = requests.get(f"{GEMINI_BASE}/models", headers={"x-goog-api-key": api_key},
+                         params={"pageSize": 200}, timeout=15)
         r.raise_for_status()
         names = [m.get("name", "").split("/")[-1] for m in r.json().get("models", [])
                  if "generateContent" in (m.get("supportedGenerationMethods") or [])]
@@ -226,9 +226,11 @@ def _call_gemini(cfg, system, history, question):
     st.session_state["_assistant_model"] = model
     contents = [{"role": "user" if r == "user" else "model", "parts": [{"text": t}]} for r, t in history]
     contents.append({"role": "user", "parts": [{"text": question}]})
+    # The key goes in a header, never in the URL, so it cannot show up in an
+    # error message on the page.
     r = requests.post(
         f"{GEMINI_BASE}/models/{model}:generateContent",
-        params={"key": cfg["api_key"]},
+        headers={"x-goog-api-key": cfg["api_key"]},
         json={"system_instruction": {"parts": [{"text": system}]}, "contents": contents,
               "generationConfig": {"temperature": 0.3, "maxOutputTokens": int(cfg.get("max_tokens", 700))}},
         timeout=60,
@@ -237,6 +239,8 @@ def _call_gemini(cfg, system, history, question):
         raise RuntimeError("The assistant's free quota is used up for now. Try again in a minute.")
     if r.status_code == 404:
         raise RuntimeError(f"Model '{model}' was not found. Set [assistant] model in the app secrets.")
+    if r.status_code in (400, 401, 403):
+        raise RuntimeError("The assistant's API key was not accepted. Check [assistant] api_key in the app secrets.")
     r.raise_for_status()
     data = r.json()
     try:
@@ -266,8 +270,22 @@ def _call_openai_compatible(cfg, system, history, question):
                             "max_tokens": int(cfg.get("max_tokens", 700))}, timeout=60)
     if r.status_code == 429:
         raise RuntimeError("The assistant's free quota is used up for now. Try again in a minute.")
+    if r.status_code in (401, 403):
+        raise RuntimeError("The assistant's API key was not accepted. Check [assistant] api_key in the app secrets.")
     r.raise_for_status()
     return r.json()["choices"][0]["message"]["content"].strip()
+
+
+def _safe_error(exc, cfg):
+    """Error text for the page: no API key and no request URL."""
+    import re
+    msg = str(exc)
+    key = (cfg or {}).get("api_key") or ""
+    if len(key) >= 8:
+        msg = msg.replace(key, "***")
+    msg = re.sub(r"\s*for url:\s*\S+", "", msg)
+    msg = re.sub(r"https?://\S+", "", msg)
+    return msg.strip() or "the request failed."
 
 
 def ask(cfg, system, history, question):
@@ -429,7 +447,7 @@ def sidebar_panel(module, ctx=None, page_title=""):
                         answer = ask(cfg_a, system_prompt(ctx, module, page_title, audience),
                                      hist[-2 * MAX_TURNS:], pending)
                     except Exception as exc:
-                        answer = f"Sorry, the assistant could not answer: {exc}"
+                        answer = f"Sorry, the assistant could not answer: {_safe_error(exc, cfg)}"
                 st.markdown(answer)
             ss["_assistant_last_call"] = time.time()
             hist.extend([("user", pending), ("assistant", answer)])
