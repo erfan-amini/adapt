@@ -6,6 +6,7 @@ A plain HTTP request is not a visit; a browser session is. This script is run
 by .github/workflows/keep_awake.yml every 6 hours.
 
     python tools/keep_awake.py https://adapt2026.streamlit.app/
+    python tools/keep_awake.py https://adapt-beta.streamlit.app/
 """
 import sys
 import time

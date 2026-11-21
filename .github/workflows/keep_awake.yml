@@ -1,7 +1,8 @@
-# Visits the deployed app every 6 hours with a real browser so Streamlit
+# Visits the deployed apps every 6 hours with a real browser so Streamlit
 # Community Cloud (which sleeps apps after ~12 hours without a visitor) keeps
-# it running, and wakes it if it has already gone to sleep.
-name: Keep the app awake
+# them running, and wakes them if they have already gone to sleep.
+# adapt2026: the main app. adapt-beta: the test copy (app_beta.py).
+name: Keep the apps awake
 
 on:
   schedule:
@@ -11,6 +12,12 @@ on:
 jobs:
   visit:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        url:
+          - https://adapt2026.streamlit.app/
+          - https://adapt-beta.streamlit.app/
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -21,4 +28,4 @@ jobs:
           pip install playwright
           playwright install --with-deps chromium
       - name: Visit the app
-        run: python tools/keep_awake.py "${{ vars.APP_URL || 'https://adapt2026.streamlit.app/' }}"
+        run: python tools/keep_awake.py "${{ matrix.url }}"
