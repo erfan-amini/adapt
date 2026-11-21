@@ -642,7 +642,7 @@ def discover_bundles(data_root=None, extra_folders=()):
         for name in sorted(os.listdir(data_root)):
             full = os.path.join(data_root, name)
             if os.path.isdir(full) and not name.startswith(('_', '.')):
-                if VISIBLE_SLUGS and name not in VISIBLE_SLUGS:   # ADAPT-AI: listed locations only
+                if VISIBLE_SLUGS and name not in VISIBLE_SLUGS:   # ADAPT Beta: listed locations only
                     continue
                 folders.append(full)
     if not VISIBLE_SLUGS:
