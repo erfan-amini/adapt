@@ -110,10 +110,12 @@ def render(ctx):
                                step=0.5, min_value=0.0)
         util = c.number_input("Utilities replacement cost ($)", value=float(C.UTIL_REPL_USD_DEFAULT), step=1000.0)
         story = d.number_input("Story height (ft)", value=float(C.STORY_H_FT_DEFAULT), step=0.5)
-        e, f, g = st.columns([1, 1, 2])
+        e, f, g, h = st.columns([1, 1, 1, 2])
+        fb = g.number_input("Freeboard (ft above the BFE)", value=C.freeboard_ft(cfg), step=0.5, min_value=0.0,
+                            help="DFE = BFE + freeboard. Elevation raises the first floor to the DFE.")
         zone = e.selectbox("Flood zone (curve set)", ["A", "V", "Riverine"], index=0)
         occf = f.selectbox("Buildings to run", ["ALL", "RES", "NONRES"], index=0)
-        years_txt = g.text_input("Target years", value=", ".join(str(y) for y in C.TARGET_YEARS_DEFAULT),
+        years_txt = h.text_input("Target years", value=", ".join(str(y) for y in C.TARGET_YEARS_DEFAULT),
                                  help="Cumulative damage is reported from the first water-level year to each target year.")
         add_story = st.checkbox("One-story homes: score 'WFP 1st' as an add-a-story conversion (v13/v14 rule)", value=True)
         st.caption(f"Reporting flag RESTRICT_MANUF_LOC = {int(bool(cfg.get('restrict_manuf', False)))} "
@@ -127,6 +129,7 @@ def render(ctx):
             st.error("Target years must be a comma-separated list of years.")
             return
         settings = RunSettings(location=slug, bfe_ft=float(bfe), elev_min_shortfall_ft=float(short),
+                               freeboard_ft=float(fb),
                                restrict_manuf_loc=bool(cfg.get("restrict_manuf", False)),
                                one_story_add_story=bool(add_story), flood_zone=zone,
                                util_repl_usd=float(util), story_h_ft=float(story),
@@ -180,7 +183,8 @@ def render(ctx):
     lk = result.bldg_lookup
     q1, q2, q3, q4 = st.columns(4)
     with q1:
-        ui.kpi("Under DFE", f"{int((lk['DFE_Status'] == 'Under DFE').sum()):,}", "first floor below BFE + 2 ft")
+        ui.kpi("Under DFE", f"{int((lk['DFE_Status'] == 'Under DFE').sum()):,}",
+               f"first floor below BFE + {result.settings.freeboard_ft:g} ft")
     with q2:
         ui.kpi("Elevation eligible", f"{int(lk['ElevationEligible'].sum()):,}", "FFE below the elevation threshold")
     with q3:
@@ -265,7 +269,7 @@ def _single_building_check(ctx, slug, cfg):
     rows = []
     for a in ACTION_NAMES:
         r = single_event_damage(occ, ftype, nst, g, fh, wl, a, sv, cv, cur, float(cfg.get("bfe_ft", 8.0)),
-                                float(cfg.get("elev_min_shortfall_ft", 0.0)))
+                                float(cfg.get("elev_min_shortfall_ft", 0.0)), freeboard_ft=C.freeboard_ft(cfg))
         if "error" in r:
             st.error(f"{r['error']} for SOID {r['soid']}")
             return

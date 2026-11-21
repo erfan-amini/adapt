@@ -239,13 +239,16 @@ def render(ctx):
         a, b, c, d = st.columns([1.4, 1, 1, 1])
         name = a.text_input("Display name", value=cfg.get("name", slug))
         bfe = b.number_input("BFE (ft NAVD88)", value=float(cfg.get("bfe_ft", 8.0)), step=0.5,
-                             help="Base flood elevation. The design flood elevation (DFE) is BFE + 2 ft and is the "
-                                  "elevation target.")
+                             help="Base flood elevation. The design flood elevation (DFE) is BFE + freeboard and is "
+                                  "the elevation target.")
         short = c.number_input("Elevation shortfall (ft)", value=float(cfg.get("elev_min_shortfall_ft", 0.0)),
                                step=0.5, min_value=0.0,
                                help="Elevation is offered only when FFE < DFE - shortfall. 0 = any building under "
                                     "the DFE; 1 = buildings within 1 ft of the DFE are not advised to elevate.")
         state = d.text_input("State", value=cfg.get("state", ""))
+        fb = st.number_input("Freeboard (ft above the BFE)", value=C.freeboard_ft(cfg), step=0.5, min_value=0.0,
+                             help="DFE = BFE + freeboard. Elevation raises the first floor to the DFE. "
+                                  "Use the local ordinance (Gloucester County: 3 ft).")
         e, f, g = st.columns(3)
         mobile = e.checkbox("Mobile-homes-dominated area (default for the pages' toggle)",
                             value=bool(cfg.get("mobile_homes_dominated", False)))
@@ -272,6 +275,7 @@ def render(ctx):
         _levels = {k: float(v) for k, v in (("mhhw_ft", fl_mhhw), ("monthly_ft", fl_month),
                                             ("pct10_ft", fl_ten), ("pct1_ft", fl_one)) if float(v) > 0}
         reg[slug] = {**cfg, "name": name.strip() or slug, "bfe_ft": float(bfe), "elev_min_shortfall_ft": float(short),
+                     "freeboard_ft": float(fb),
                      "state": state.strip(), "mobile_homes_dominated": bool(mobile), "restrict_manuf": bool(restrict),
                      "protected": bool(protected), "blurb": blurb.strip(), "flood_levels": _levels}
         ui.save_location_registry(reg)

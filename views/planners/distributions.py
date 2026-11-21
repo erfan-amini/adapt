@@ -558,7 +558,7 @@ def render(ctx, embedded=False):
                         "The **damaged-buildings chart** shows the share of buildings with median "
                         "damage greater than zero and the share with P90 damage greater than zero. "
                         "The **Raise Utilities chart** shows, among buildings that experience any "
-                        "damage, the share for which raising utilities above BFE+2 ft brings P90 "
+                        "damage, the share for which raising utilities above the DFE brings P90 "
                         "damage to ≤ $1k. The **Elevation chart** shows, among damaged buildings "
                         "where WFP Basement is **not** sufficient on its own, the share for which "
                         "elevation strictly outperforms WFP Basement on P90 - i.e. elevation "

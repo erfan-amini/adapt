@@ -129,7 +129,8 @@ def community_context(ctx):
     e = ctx.loc_entry or {}
     meta = e.get("metadata") or {}
     lines = [f"Selected community: {cfg.get('name', loc)} ({cfg.get('state', '')})",
-             f"BFE: {cfg.get('bfe_ft')} ft NAVD88; DFE = BFE + 2 ft = {float(cfg.get('bfe_ft', 0)) + 2:g} ft",
+             f"BFE: {cfg.get('bfe_ft')} ft NAVD88; DFE = BFE + {C.freeboard_ft(e if e.get('freeboard_ft') is not None else cfg):g} ft "
+             f"= {float(cfg.get('bfe_ft', 0)) + C.freeboard_ft(e if e.get('freeboard_ft') is not None else cfg):g} ft",
              f"Elevation shortfall rule: elevation offered when FFE < DFE - {cfg.get('elev_min_shortfall_ft', 0)} ft",
              f"Mobile-homes-dominated: {cfg.get('mobile_homes_dominated', False)}",
              f"Buildings processed: {meta.get('nBldgProcessed', 'n/a')} (residential {meta.get('n_res', 'n/a')}, "

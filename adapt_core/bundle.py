@@ -218,6 +218,12 @@ def load_bundle(data_folder, location_slug, file_sig=None):
     # 1. Metadata
     metadata = _bundle_read_metadata(join(f'{location_slug}_metadata.csv'))
     bfe_ft = float(metadata.get('BFE_FT_NAVD88', 9))
+    # Freeboard used by the run (DFE = BFE + freeboard). Bundles written before
+    # the engine recorded it used 2 ft.
+    try:
+        freeboard_ft = float(metadata.get('FREEBOARD_FT', 2.0))
+    except (TypeError, ValueError):
+        freeboard_ft = 2.0
 
     # Map TargetYear int → display label (2025 → 'Potential', etc.)
     target_year_labels = {}
@@ -258,7 +264,7 @@ def load_bundle(data_folder, location_slug, file_sig=None):
     # sets `Dmg(:,:,4,si) = dmg_baseline` - i.e. Elevate equals No mitigation
     # exactly, by construction. The DFE_Status flag is itself derived
     # from the building's first-floor elevation (FFE) being above the design
-    # flood elevation (DFE = BFE + 2 ft), but FFE = ground + foundation height,
+    # flood elevation (DFE = BFE + freeboard, 2 ft by default), but FFE = ground + foundation height,
     # so a building can sit on low ground (yard/garage flood frequently) and
     # still be tagged Above-DFE because its raised foundation lifts
     # the FFE above the DFE. The combined effect: a non-trivial number of
@@ -533,6 +539,8 @@ def load_bundle(data_folder, location_slug, file_sig=None):
         'metadata':           metadata,
         'skipped':            skipped,
         'bfe_ft':             bfe_ft,
+        'freeboard_ft':       freeboard_ft,
+        'dfe_ft':             bfe_ft + freeboard_ft,
         'target_year_labels': target_year_labels,
         'format':             'bundle',
         'location_slug':      location_slug,

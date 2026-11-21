@@ -34,7 +34,8 @@ import pandas as pd
 
 from adapt_core.config import (ACTION_NAMES, ACTION_CODES, SCENARIOS, SCENARIO_LABELS,
                                PERCENTILES, TARGET_YEARS_DEFAULT, FLOOD_ZONE_DEFAULT,
-                               UTIL_REPL_USD_DEFAULT, STORY_H_FT_DEFAULT, Y_NOW)
+                               UTIL_REPL_USD_DEFAULT, STORY_H_FT_DEFAULT, Y_NOW,
+                               FREEBOARD_FT_DEFAULT)
 
 ENGINE_VERSION = "python-1.0 (port of AAA___Main_v14.m)"
 
@@ -206,14 +207,15 @@ def _pct_on_curve(curve, depths_raw):
 
 def building_damages(WL, FFE, BFE, H, util_cost, struct_val, cont_val, struct_curve, cont_curve,
                      apply_manuf_restriction, has_basement, is_manuf_home_flag,
-                     elev_min_shortfall_ft, one_story, add_story_ok):
+                     elev_min_shortfall_ft, one_story, add_story_ok, freeboard_ft=FREEBOARD_FT_DEFAULT):
     """Annual damage for one building under one SLR scenario.
 
     WL: (nYears, nMC) water levels, ft NAVD88. Returns (nActions, nYears, nMC).
+    Elevation raises the first floor to the DFE = BFE + freeboard_ft.
     """
     nY, nM = WL.shape
     D = np.zeros((len(ACTION_NAMES), nY, nM))
-    FFE_elevated = BFE + 2.0
+    FFE_elevated = BFE + float(freeboard_ft)
     elev_eligible = FFE < (FFE_elevated - elev_min_shortfall_ft)
 
     dmg_at_0 = (np.interp(0.0, DEPTHS, struct_curve) / 100.0) * struct_val + \
@@ -268,7 +270,8 @@ def single_event_damage(occupancy, foundation_type, num_stories, ground_elevatio
                         foundation_height_ft, water_level_ft, action, structure_value,
                         content_value, curves: DamageCurves, bfe_ft, elev_min_shortfall_ft=0.0,
                         flood_zone=FLOOD_ZONE_DEFAULT, util_cost=UTIL_REPL_USD_DEFAULT,
-                        story_h_ft=STORY_H_FT_DEFAULT, one_story_add_story=True):
+                        story_h_ft=STORY_H_FT_DEFAULT, one_story_add_story=True,
+                        freeboard_ft=FREEBOARD_FT_DEFAULT):
     """Damage of one building for one water level and one action (the FFF
     estimator). `action` is an ACTION_NAMES entry. Returns a dict."""
     soid, fb = nsi_to_soid(occupancy, foundation_type, num_stories)
@@ -281,11 +284,12 @@ def single_event_damage(occupancy, foundation_type, num_stories, ground_elevatio
     D = building_damages(WL, FFE, bfe_ft, story_h_ft, util_cost, structure_value, content_value,
                          sc, cc, manuf, str(foundation_type).strip().upper() == "B",
                          is_manuf_home(occupancy), elev_min_shortfall_ft,
-                         is_one_story(num_stories, soid), one_story_add_story and can_add_story(soid))
+                         is_one_story(num_stories, soid), one_story_add_story and can_add_story(soid),
+                         freeboard_ft=freeboard_ft)
     ai = ACTION_NAMES.index(action)
     return {"soid": soid, "ffe_ft": FFE, "depth_ft": float(water_level_ft) - FFE,
             "total_usd": float(D[ai, 0, 0]), "baseline_usd": float(D[IX_BASE, 0, 0]),
-            "elevation_eligible": bool(FFE < bfe_ft + 2.0 - elev_min_shortfall_ft),
+            "elevation_eligible": bool(FFE < bfe_ft + float(freeboard_ft) - elev_min_shortfall_ft),
             "occupancy_fallback": fb}
 
 
@@ -297,6 +301,7 @@ class RunSettings:
     location: str                                   # slug, e.g. "MasticBeach"
     bfe_ft: float
     elev_min_shortfall_ft: float = 0.0
+    freeboard_ft: float = FREEBOARD_FT_DEFAULT       # DFE = BFE + freeboard_ft
     restrict_manuf_loc: bool = False                # reporting only (v14: rule is occupancy-driven)
     one_story_add_story: bool = True
     flood_zone: str = FLOOD_ZONE_DEFAULT
@@ -334,7 +339,8 @@ class RunResult:
             f"{len(self.missing_values)} kept without a damage estimate (no structure or content value).",
             f"Water levels: {self.n_years} years x {self.n_mc} Monte Carlo runs "
             f"({self.year_range[0]}..{self.year_range[1]}); BFE {s.bfe_ft:g} ft, "
-            f"DFE {s.bfe_ft + 2:g} ft, elevation offered below {s.bfe_ft + 2 - s.elev_min_shortfall_ft:g} ft.",
+            f"DFE {s.bfe_ft + s.freeboard_ft:g} ft (BFE + {s.freeboard_ft:g} ft), elevation offered below "
+            f"{s.bfe_ft + s.freeboard_ft - s.elev_min_shortfall_ft:g} ft.",
             f"Run time {self.elapsed_s:.1f} s ({ENGINE_VERSION}).",
         ]
 
@@ -402,7 +408,7 @@ def run_location(nsi: pd.DataFrame, wl_p50: pd.DataFrame, wl_p90: pd.DataFrame,
 
     WL = {"50th-percentile": W50, "90th-percentile": W90}
     masks = [years <= y for y in target_years]
-    DFE = s.bfe_ft + 2.0
+    DFE = s.bfe_ft + float(s.freeboard_ft)
     ELIG_MAX = DFE - s.elev_min_shortfall_ft
 
     cat_labels = ["RES_UnderDFE", "RES_AboveDFE", "NONRES_UnderDFE", "NONRES_AboveDFE"]
@@ -462,7 +468,8 @@ def run_location(nsi: pd.DataFrame, wl_p50: pd.DataFrame, wl_p90: pd.DataFrame,
         for scn, W in WL.items():
             if not missing_value:
                 D = building_damages(W, FFE, s.bfe_ft, s.story_h_ft, s.util_repl_usd, float(sv), float(cv),
-                                     sc, cc, manuf, hb, mh, s.elev_min_shortfall_ft, one_story, add_ok)
+                                     sc, cc, manuf, hb, mh, s.elev_min_shortfall_ft, one_story, add_ok,
+                                     freeboard_ft=s.freeboard_ft)
                 cat_agg[cat][scn] += D
             for ti, m in enumerate(masks):
                 if not missing_value:
@@ -510,13 +517,13 @@ def run_location(nsi: pd.DataFrame, wl_p50: pd.DataFrame, wl_p90: pd.DataFrame,
                                             "AssignedSOID", "FallbackOccupancyType"])
 
     meta = pd.DataFrame({"Key": [
-        "LOCATION", "BFE_FT_NAVD88", "nBldgProcessed", "n_res", "n_nonres", "n_occupancy_fallback",
+        "LOCATION", "BFE_FT_NAVD88", "FREEBOARD_FT", "DFE_FT_NAVD88", "nBldgProcessed", "n_res", "n_nonres", "n_occupancy_fallback",
         "TARGET_YEARS", "TARGET_YEAR_LABELS", "ACTIONS", "ACTION_NAMES", "SCENARIOS", "SCENARIO_LABELS",
         "PERCENTILES", "RESTRICT_MANUF_LOC", "ELEV_MIN_SHORTFALL_FT", "ONE_STORY_ADD_STORY",
         "FLOOD_ZONE", "UTIL_REPL_USD", "STORY_H_FT", "OCCUPANCY_FILTER", "ENGINE", "RUN_DATE",
         "N_MC", "MC_YEARS", "n_missing_value"],
         "Value": [
-        s.location, f"{s.bfe_ft:g}", str(n_proc), str(n_res), str(n_nonres), str(len(fallback)),
+        s.location, f"{s.bfe_ft:g}", f"{s.freeboard_ft:g}", f"{s.bfe_ft + s.freeboard_ft:g}", str(n_proc), str(n_res), str(n_nonres), str(len(fallback)),
         ", ".join(str(y) for y in target_years), ", ".join(str(y) for y in target_years),
         ", ".join(str(a) for a in ACTION_CODES), ", ".join(ACTION_NAMES), ", ".join(SCENARIOS),
         ", ".join(SCENARIO_LABELS), ", ".join(PCT_HDR), str(int(bool(s.restrict_manuf_loc))),

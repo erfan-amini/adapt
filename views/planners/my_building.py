@@ -416,7 +416,8 @@ def _render_damage(ctx, df_buildings, loc_entry, location_name, occupancy_label,
                 '90th-percentile': 'High-End SLR (P90)',
             }.get(_scn_for_cards, _scn_for_cards)
             _bfe = (loc_entry or {}).get('bfe_ft')
-            _dfe = (float(_bfe) + 2.0) if (_bfe is not None and pd.notna(_bfe)) else None
+            _dfe = (float(_bfe) + float((loc_entry or {}).get('freeboard_ft', 2.0))) \
+                if (_bfe is not None and pd.notna(_bfe)) else None
             _gnd = building_info.get('ground_elevation')
             _ffe_c = building_info.get('FFE_ft')
             _nstory = building_info.get('number_of_stories')

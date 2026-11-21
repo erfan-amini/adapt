@@ -41,7 +41,11 @@ are not used; the scenarios are computed from the "2017 NOAA SLR" sheet.
 ## Settings (adapt_core/config.py)
 
 - BFE 8 ft NAVD88 (median of the certificates' BFEs, which range 7 to 10 ft);
-  DFE 10 ft; elevation shortfall 0.
+  freeboard 3 ft, so DFE 11 ft (the county ordinance requires the lowest floor
+  3 ft above the BFE; set 2026-11-21, before that the run used 2 ft and DFE
+  10 ft); elevation shortfall 0. Elevation raises the first floor to 11 ft.
+- Run of 2026-11-21 with DFE 11 ft: 2,943 buildings below the DFE and offered
+  elevation (2,448 with DFE 10 ft). Only the Elevate results changed.
 - Present-day flood levels for the home report: MHHW 1.1 ft (NOAA station
   8637689, Yorktown USCG, 1983-2001 epoch), 10% 5.1 ft and 1% 8.8 ft (NACCS
   plus Int-High rise 2020 to 2025). No monthly level yet.

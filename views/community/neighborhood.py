@@ -42,7 +42,8 @@ _METRICS = {
              "first floor, averaged over the 1,000 simulated futures and over the hexagon's buildings."),
     "Below the DFE": dict(
         key="under", kind="pct", scale="Purples",
-        help="Share of buildings whose first floor is below the Design Flood Elevation (BFE + 2 ft)."),
+        help="Share of buildings whose first floor is below the Design Flood Elevation (BFE plus the "
+             "local freeboard: 2 ft, or 3 ft in Gloucester County)."),
 }
 
 

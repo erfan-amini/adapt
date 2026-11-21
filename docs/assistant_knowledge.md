@@ -112,7 +112,8 @@ and name at the top of the sidebar returns to the landing page.
   - WFP B (wet-floodproof the basement): basement contents and finishes are
     flood-tolerant; removes the damage that occurs at or below first-floor
     level. Only for buildings with a basement.
-  - Elevate: raise the house so its first floor is at the DFE (BFE + 2 ft).
+  - Elevate: raise the house so its first floor is at the DFE (BFE + 2 ft;
+    BFE + 3 ft in Gloucester County).
     Offered only when the first floor is below DFE minus the community's
     elevation shortfall (0 ft at Mastic Beach and Pamunkey, 1 ft at
     Shinnecock).
@@ -126,8 +127,9 @@ and name at the top of the sidebar returns to the landing page.
     the pages show only raising homes.
 - Elevation terms: BFE = FEMA Base Flood Elevation, the 1% annual chance
   flood level on FEMA maps (Mastic Beach 8 ft, Shinnecock 9 ft, Pamunkey
-  7 ft NAVD88 in this project). DFE = Design Flood Elevation = BFE + 2 ft,
-  the recommended level for the lowest floor. "Under DFE" means the first
+  7 ft NAVD88 in this project; Gloucester County 8 ft). DFE = Design Flood
+  Elevation = BFE + 2 ft, the recommended level for the lowest floor; in
+  Gloucester County BFE + 3 ft = 11 ft, the county's freeboard rule. "Under DFE" means the first
   floor is below the DFE. Elevations are in feet above NAVD88 (about mean
   sea level).
 - Adaptation effectiveness map rule: each building is colored by the

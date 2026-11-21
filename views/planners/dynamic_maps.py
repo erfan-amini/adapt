@@ -242,7 +242,8 @@ def render(ctx):
                     key=f"map_ae_elev_cutoff_{location_name}", disabled=not _ae,
                     help=f"Buildings whose first floor is at or above this elevation are not considered for "
                          f"elevation and are never colored Residual. Default = BFE "
-                         f"({_bfe_default:g} ft) = DFE - 2 ft. Set it to the DFE ({_bfe_default + 2:g} ft) to "
+                         f"({_bfe_default:g} ft) = DFE - {float((loc_entry or {}).get('freeboard_ft', 2.0)):g} ft. Set it to the DFE "
+                         f"({_bfe_default + float((loc_entry or {}).get('freeboard_ft', 2.0)):g} ft) to "
                          f"include every Under-DFE building.",
                 )
 
@@ -1951,7 +1952,8 @@ def render(ctx):
             with cov_col2:
                 if bfe_ft_local is not None:
                     st.markdown(f"**Base Flood Elevation (BFE)**  \n{bfe_ft_local:g} ft NAVD88")
-                    st.caption(f"DFE = BFE + 2 = {bfe_ft_local + 2:g} ft NAVD88")
+                    _fb_local = float(loc_entry.get('freeboard_ft', 2.0))
+                    st.caption(f"DFE = BFE + {_fb_local:g} = {bfe_ft_local + _fb_local:g} ft NAVD88")
             with cov_col3:
                 target_year_labels_local = loc_entry.get('target_year_labels') or {}
                 if target_year_labels_local:

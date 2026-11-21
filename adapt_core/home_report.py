@@ -117,7 +117,7 @@ def build_report(loc_entry, cfg, building_id, address_text, scenario="50th-perce
     horizons = [int(y) for y in horizons]
 
     bfe = _f(cfg.get("bfe_ft"), _f((loc_entry or {}).get("bfe_ft"), 8.0))
-    dfe = bfe + 2.0
+    dfe = bfe + C.freeboard_ft(loc_entry if (loc_entry or {}).get("freeboard_ft") is not None else cfg)
     ground = _f(row.get("ground_elevation"))
     ffe = _f(row.get("FFE_ft"))
     bsmt = has_basement(row)

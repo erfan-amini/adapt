@@ -88,10 +88,10 @@ def _render_summary(ctx, df_agg, df_buildings, loc_entry, location_name, mobile_
                           help=f"Range: {format_currency(baseline_p05)} - {format_currency(baseline_p95)}")
             with col3:
                 st.metric(label="Under DFE (No Mitigation)", value=format_currency(infp_baseline),
-                          help="Buildings with FFE below Design Flood Elevation (BFE+2)")
+                          help=f"Buildings with FFE below Design Flood Elevation (BFE + {float((loc_entry or {}).get('freeboard_ft', 2.0)):g} ft)")
             with col4:
                 st.metric(label="Above DFE (No Mitigation)", value=format_currency(outfp_baseline),
-                          help="Buildings with FFE above Design Flood Elevation (BFE+2)")
+                          help=f"Buildings with FFE above Design Flood Elevation (BFE + {float((loc_entry or {}).get('freeboard_ft', 2.0)):g} ft)")
 
         st.divider()
 

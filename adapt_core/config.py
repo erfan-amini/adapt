@@ -39,6 +39,20 @@ PERCENTILES = [*range(1, 11), 25, 50, 75, *range(90, 100)]
 FLOOD_ZONE_DEFAULT = "A"
 UTIL_REPL_USD_DEFAULT = 20000.0
 STORY_H_FT_DEFAULT = 10.0
+# Freeboard above the BFE: DFE = BFE + freeboard. Elevation raises the first
+# floor to the DFE. A location can set its own "freeboard_ft" (Gloucester
+# County requires 3 ft).
+FREEBOARD_FT_DEFAULT = 2.0
+
+
+def freeboard_ft(entry):
+    """Freeboard (ft) for a location: from a bundle entry ('freeboard_ft', read
+    from the run's metadata) or a registry entry, else the default."""
+    try:
+        v = (entry or {}).get("freeboard_ft")
+        return float(v) if v is not None and str(v) != "nan" else FREEBOARD_FT_DEFAULT
+    except (TypeError, ValueError):
+        return FREEBOARD_FT_DEFAULT
 Y_NOW = 2025
 
 # Per-location defaults shipped with the app. The Developer module can edit
@@ -78,7 +92,10 @@ LOCATION_DEFAULTS = {
     # (Yorktown USCG, 1983-2001 epoch); 10% and 1% from the NACCS save point
     # 17719 curve plus Int-High sea-level rise 2020 to 2025 (see
     # tools/make_gloucester_inputs.py). No monthly level yet.
-    "Gloucester":  {"name": "Gloucester County", "bfe_ft": 8.0, "elev_min_shortfall_ft": 0.0,
+    # Freeboard 3 ft: the county's floodplain ordinance requires the lowest
+    # floor 3 ft above the BFE, so DFE = 11 ft NAVD88.
+    "Gloucester":  {"name": "Gloucester County", "bfe_ft": 8.0, "freeboard_ft": 3.0,
+                    "elev_min_shortfall_ft": 0.0,
                     "restrict_manuf": False, "mobile_homes_dominated": False, "protected": True,
                     "state": "VA",
                     "flood_levels": {"mhhw_ft": 1.1, "pct10_ft": 5.1, "pct1_ft": 8.8},
