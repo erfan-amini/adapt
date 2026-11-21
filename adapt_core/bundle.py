@@ -634,7 +634,7 @@ def discover_bundles(data_root=None, extra_folders=()):
     layout) and in any flat folder listed in `extra_folders` (legacy layout).
     Returns (data_store, sorted location names). Later folders never override
     a location found earlier."""
-    from adapt_core.config import DATA_DIR, APP_ROOT
+    from adapt_core.config import DATA_DIR, APP_ROOT, VISIBLE_SLUGS
     if data_root is None:
         data_root = DATA_DIR
     folders = []
@@ -642,8 +642,11 @@ def discover_bundles(data_root=None, extra_folders=()):
         for name in sorted(os.listdir(data_root)):
             full = os.path.join(data_root, name)
             if os.path.isdir(full) and not name.startswith(('_', '.')):
+                if VISIBLE_SLUGS and name not in VISIBLE_SLUGS:   # ADAPT-AI: listed locations only
+                    continue
                 folders.append(full)
-    folders.extend(list(extra_folders) or [APP_ROOT])
+    if not VISIBLE_SLUGS:
+        folders.extend(list(extra_folders) or [APP_ROOT])
     data_store = {}
     for folder in folders:
         store, names = load_data_from_folder(folder)

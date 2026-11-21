@@ -22,7 +22,7 @@ import streamlit as st
 from adapt_core import config as C     # light: paths and constants only
 
 st.set_page_config(
-    page_title="ADAPT | Flood Risk Tool",
+    page_title=f"{C.APP_NAME} | Flood Risk Tool",
     page_icon="🌊",
     layout="wide",
     initial_sidebar_state="expanded",

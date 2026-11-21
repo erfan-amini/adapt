@@ -18,6 +18,14 @@ SURVEY_API_URL = ("https://script.google.com/macros/s/"
                   "AKfycbxIiaRjGRV1_c-f1z1LgGPUHY_XFhdbUMv4bpC01Y5go9DtYm2G2AaROnlmzJuU9X1W/exec")
 LOCATIONS_FILE = os.path.join(DATA_DIR, "locations.json")
 
+# App variant. app_ai.py sets ADAPT_VARIANT=ai to run ADAPT-AI: the same app for
+# temporary testing, with Mastic Beach and Gloucester County only and no
+# password on the app or its locations.
+VARIANT = os.environ.get("ADAPT_VARIANT", "").strip().lower()
+VARIANT_AI = VARIANT == "ai"
+VISIBLE_SLUGS = ("MasticBeach", "Gloucester") if VARIANT_AI else None
+APP_NAME = "ADAPT-AI" if VARIANT_AI else "ADAPT"
+
 # ---------------------------------------------------------------------------
 # Model constants (mirror AAA___Main_v14.m)
 # ---------------------------------------------------------------------------
