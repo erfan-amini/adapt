@@ -7,7 +7,7 @@ Sources
     gaps, in the 14-field ADAPT inventory layout. 1,109 buildings have blank
     fields (974 garages and 135 others); the engine lists them as skipped.
     The address column is dropped here.
-- data/_survey/hamiltonhowardbeach_ground_3dep.csv
+- data/HamiltonHowardBeach/source/HHB_ground_3dep_2026-11-05.csv
     USGS 3DEP 1 m bare-earth ground (NY CMPG 2013 tile, ft NAVD88) at each
     building point (tools/make_ground_3dep.py). It replaces the NSI ground
     elevation, which sits a median 4.5 ft below the lidar ground in this area.
@@ -53,7 +53,7 @@ SLUG = "HamiltonHowardBeach"
 OUT = os.path.join(ROOT, "data", SLUG)
 SRC = os.path.join(OUT, "source")
 INV_SRC = os.path.join(SRC, "HHB_All_Buildings_2026-11-05.xlsx")
-GROUND_SRC = os.path.join(ROOT, "data", "_survey", "hamiltonhowardbeach_ground_3dep.csv")
+GROUND_SRC = os.path.join(SRC, "HHB_ground_3dep_2026-11-05.csv")
 
 M_TO_FT = 1.0 / 0.3048
 YEARS = list(range(2025, 2101))
