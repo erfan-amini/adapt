@@ -28,6 +28,18 @@ DEM_COG_URL_TEMPLATE = (
     "current/{tile}/USGS_13_{tile}.tif"
 )
 DEM_COG_OVERRIDE_URL = None
+# Higher-resolution DEMs read before the seamless 1/3 arc-second DEM wherever
+# they cover the map area; the seamless DEM then fills any gap. In Hamilton and
+# Howard Beach the seamless DEM sits a median 4.5 ft below the USGS 1 m lidar
+# (NY CMPG 2013) and below NYC's own footprint ground elevations, which agree
+# with the lidar. Each entry: (lon_min, lat_min, lon_max, lat_max) coverage, URLs.
+_DEM_1M = "https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/1m/Projects/{p}/TIFF/USGS_one_meter_{t}_{p}.tif"
+PREFERRED_DEMS = [
+    ((-73.9371, 40.5546, -73.8156, 40.7361), [
+        _DEM_1M.format(p="NY_CMPG_2013", t="x59y451"),
+        _DEM_1M.format(p="NY_CMPG_2013", t="x59y450"),
+    ]),
+]
 FT_PER_M = 1.0 / 0.3048
 WS_BINS_FT = [0, 1, 2, 3, 4, 5, 6]
 WS_COLORS = [
@@ -121,7 +133,10 @@ def read_dem_roi(bbox, target_res_m=10.0):
     if DEM_COG_OVERRIDE_URL:
         urls = [DEM_COG_OVERRIDE_URL]
     else:
-        urls = [DEM_COG_URL_TEMPLATE.format(tile=t) for t in dem_tiles_for_bbox(bbox)]
+        urls = [u for cov, us in PREFERRED_DEMS
+                if cov[0] < lon_max and cov[2] > lon_min and cov[1] < lat_max and cov[3] > lat_min
+                for u in us]
+        urls += [DEM_COG_URL_TEMPLATE.format(tile=t) for t in dem_tiles_for_bbox(bbox)]
 
     env = rasterio.Env(
         GDAL_DISABLE_READDIR_ON_OPEN="EMPTY_DIR",
