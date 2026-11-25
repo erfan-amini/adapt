@@ -111,7 +111,13 @@ def render_depth_tool(ctx, building_id=None, show_picker=True):
             i = (df['Year'] - year).abs().idxmin()
             return float(df.loc[i, col])
 
+        from adapt_core import config as _C, ui as _ui
+        _bdcfg = _ui.location_cfg(getattr(ctx, "registry", {}) or {}, selected_location) or {}
+
         def _bdslr(scn_key, year):
+            _t = _C.slr_table_ft(_bdcfg, scn_key, year)
+            if _t is not None:
+                return _t
             df = _bdwl.get(scn_key)
             a, b = _bdlvl(df, year, 'P50'), _bdlvl(df, _bdbase_year, 'P50')
             return (a - b) if (a is not None and b is not None) else 0.0

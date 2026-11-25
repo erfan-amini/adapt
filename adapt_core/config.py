@@ -80,6 +80,35 @@ def freeboard_ft(entry):
         return float(v) if v is not None and str(v) != "nan" else FREEBOARD_FT_DEFAULT
     except (TypeError, ValueError):
         return FREEBOARD_FT_DEFAULT
+
+
+# Sea-level rise from the official (state) table of a location, when its
+# settings carry one under "slr". Rule: use the state values unless told
+# otherwise. Table: {"units": "in" | "ft", "anchor_years": [...],
+# "P50": [...], "P90": [...], "base_year": 2025}; values are linear between
+# anchor years and the result is the rise since base_year.
+_SLR_KEY = {"50th-percentile": "P50", "90th-percentile": "P90", "P50": "P50", "P90": "P90"}
+
+
+def slr_table_ft(cfg, scenario, year):
+    """Rise (ft) since the table's base year, or None without a table."""
+    t = (cfg or {}).get("slr") or {}
+    yrs, vals = t.get("anchor_years"), t.get(_SLR_KEY.get(scenario, ""))
+    if not yrs or not vals or len(yrs) != len(vals):
+        return None
+    scale = 1.0 / 12.0 if str(t.get("units", "in")).lower().startswith("in") else 1.0
+
+    def at(y):
+        y = float(y)
+        if y <= yrs[0]:
+            return float(vals[0])
+        for (y0, v0), (y1, v1) in zip(zip(yrs, vals), zip(yrs[1:], vals[1:])):
+            if y <= y1:
+                return float(v0) + (float(v1) - float(v0)) * (y - float(y0)) / (float(y1) - float(y0))
+        return float(vals[-1])
+    return (at(year) - at(t.get("base_year", Y_NOW))) * scale
+
+
 Y_NOW = 2025
 
 # Per-location defaults shipped with the app. The Developer module can edit
@@ -146,6 +175,12 @@ LOCATION_DEFAULTS = {
                     "restrict_manuf": False, "mobile_homes_dominated": False,
                     "survey_key": "hamiltonhowardbeach", "protected": True, "state": "NY",
                     "target_years": [2025, 2040, 2055, 2075, 2100],
+                    # NYS Part 490 (2024), New York City region, inches above
+                    # 1995-2014 (centre 2004.5); decade values at mid-decade.
+                    # P50 = Medium, P90 = High. tools/make_hhb_inputs.py reads it.
+                    "slr": {"source": "NYS Part 490 (2024), New York City region", "units": "in",
+                            "anchor_years": [2004.5, 2034.5, 2054.5, 2084.5, 2100.0],
+                            "P50": [0, 9, 16, 30, 36], "P90": [0, 13, 23, 45, 65], "base_year": 2025},
                     "flood_levels": {"mhhw_ft": 3.2, "monthly_ft": 4.0, "pct10_ft": 7.7, "pct1_ft": 10.8},
                     "blurb": (
                         "Hamilton Beach and Howard Beach sit on the north shore of Jamaica Bay in Queens, "

@@ -1358,7 +1358,7 @@ def render(ctx):
                 elif map_view in ("Flood Map", "Road Map") and flood_level_key is not None:
                     _wl_base = float(_fl_values[flood_level_key])
                     _slr_used = float(_slr_override) if _slr_override and _slr_override > 0 \
-                        else float(TV.slr_ft(loc_entry, scenario, target_year))
+                        else float(TV.slr_ft(loc_entry, scenario, target_year, _cfg_loc))
                     _wl_now = _wl_base + _slr_used
                     _lvl_label = next(lbl for k, lbl, _h in TV.LEVELS if k == flood_level_key)
                     try:

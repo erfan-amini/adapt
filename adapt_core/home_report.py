@@ -53,9 +53,13 @@ def _level(df, year, col="P50"):
     return _f(df.loc[i, col])
 
 
-def slr_ft(loc_entry, scenario, year):
-    """Sea-level rise by `year` under `scenario`: change in the median
-    annual-maximum water level since the first model year."""
+def slr_ft(loc_entry, scenario, year, cfg=None):
+    """Sea-level rise by `year` under `scenario`: the location's state table
+    when its settings have one, else the change in the median annual-maximum
+    water level since the first model year."""
+    v = C.slr_table_ft(cfg, scenario, year)
+    if v is not None:
+        return v
     wl = (loc_entry or {}).get("water_levels") or {}
     df = wl.get(scenario)
     if df is None or df.empty:
@@ -127,7 +131,7 @@ def build_report(loc_entry, cfg, building_id, address_text, scenario="50th-perce
     # Sea-level rise by horizon, both scenarios, inches
     slr = {}
     for scn in ("50th-percentile", "90th-percentile"):
-        slr[scn] = {y: slr_ft(loc_entry, scn, y) for y in horizons}
+        slr[scn] = {y: slr_ft(loc_entry, scn, y, cfg) for y in horizons}
 
     # Flood depths above ground for the chosen scenario
     levels = (cfg.get("flood_levels") or {})

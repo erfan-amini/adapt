@@ -73,8 +73,13 @@ def level_defaults(loc_entry, cfg):
     return out
 
 
-def slr_ft(loc_entry, scenario, year):
-    """Sea-level rise since the first model year: change in the median annual-maximum water level."""
+def slr_ft(loc_entry, scenario, year, cfg=None):
+    """Sea-level rise since the first model year: the location's state table when its
+    settings have one, else the change in the median annual-maximum water level."""
+    from adapt_core import config as _C
+    v = _C.slr_table_ft(cfg, scenario, year)
+    if v is not None:
+        return v
     wl = (loc_entry or {}).get("water_levels") or {}
     df = wl.get(scenario)
     if df is None or df.empty:

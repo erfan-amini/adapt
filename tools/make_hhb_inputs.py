@@ -17,8 +17,9 @@ Water levels (DDD___HamiltonHowardBeach_MC_annual_max_waterlevels_P50/P90.csv)
   Base, Post96RT, expected value (mean), return periods 1 to 10,000 years. The
   values are in ft NAVD88 (NAVD88 = MSL(1983-2001) - 0.119 m, NOAA VDatum) and
   refer to the 1983-2001 mean sea level (mid-point about 1992). The 1-, 10-,
-  100-, 1,000- and 10,000-year values are the labelled ones; the others were
-  read off the plotted curve (about 0.1 ft precision).
+  100-, 1,000- and 10,000-year values are the printed ones; the other eight
+  were read off the marker centres of the same plot (0.03 ft per pixel; the
+  printed points read back within 0.02 ft).
 - Shift to 2025: +0.15 m (0.49 ft), the observed rise of mean sea level from
   the 1983-2001 epoch to 2025 at the nearest NOAA gauges (Philip Orton).
 - Sea-level rise after 2025: NYS Part 490 (2024), New York City region,
@@ -64,10 +65,12 @@ NACCS_SP12011 = {1: 4.82, 2: 5.56, 5: 6.46, 10: 7.20, 20: 7.95, 50: 9.08, 100: 1
                  200: 11.82, 500: 13.77, 1000: 15.24, 2000: 16.79, 5000: 18.95, 10000: 20.38}
 RISE_EPOCH_TO_2025_FT = 0.15 * M_TO_FT
 
-# NYS Part 490 (2024), NYC, inches above 1995-2014
-NYS_ANCHOR_YEARS = [2004.5, 2034.5, 2054.5, 2084.5, 2100.0]
-NYS_SLR_IN = {"P50": [0, 9, 16, 30, 36],      # Medium (50th percentile)
-              "P90": [0, 13, 23, 45, 65]}     # High (90th percentile)
+# NYS Part 490 (2024), NYC, inches above 1995-2014: the table in the location's
+# settings (adapt_core/config.py), so the model inputs and the app use one source.
+sys.path.insert(0, ROOT)
+from adapt_core import config as C                     # noqa: E402
+SLR_TABLE = C.LOCATION_DEFAULTS[SLUG]["slr"]
+NYS_SLR_IN = {k: SLR_TABLE[k] for k in ("P50", "P90")}  # Medium, High
 
 # Tides at NOAA 8517201 and Inwood (m above mean sea level), 2025 mean sea level
 MSL_EPOCH_NAVD88_M = 0.925 - 1.044            # NOAA 8517201: MSL - NAVD88 = -0.119 m
@@ -76,8 +79,7 @@ MMHW_ABOVE_MSL_M = 1.19                       # Orton et al. 2019, Inwood
 
 
 def nys_rise_since_2025_ft(year, key):
-    s = lambda y: np.interp(y, NYS_ANCHOR_YEARS, NYS_SLR_IN[key]) / 12.0
-    return s(year) - s(2025)
+    return C.slr_table_ft({"slr": SLR_TABLE}, key, year)
 
 
 def curve():
