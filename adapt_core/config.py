@@ -27,6 +27,8 @@ VARIANT = os.environ.get("ADAPT_VARIANT", "").strip().lower()
 VARIANT_BETA = VARIANT == "beta"
 BETA_STATES = ("NY",)
 BETA_BUILDING_LOCK = ("Shinnecock",)
+# Kept out of ADAPT Beta altogether (CIRF data, not cleared for a public copy).
+BETA_EXCLUDE = ("HamiltonHowardBeach",)
 APP_NAME = "ADAPT Beta" if VARIANT_BETA else "ADAPT"
 
 
@@ -43,7 +45,8 @@ def visible_slugs():
                 reg.setdefault(slug, {}).update(cfg)
     except Exception:
         pass
-    return tuple(k for k, v in reg.items() if str(v.get("state", "")).upper() in BETA_STATES)
+    return tuple(k for k, v in reg.items()
+                 if str(v.get("state", "")).upper() in BETA_STATES and k not in BETA_EXCLUDE)
 
 # ---------------------------------------------------------------------------
 # Model constants (mirror AAA___Main_v14.m)
