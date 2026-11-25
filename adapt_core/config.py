@@ -131,15 +131,26 @@ LOCATION_DEFAULTS = {
                         "Bay and the Chesapeake Bay. Its low-lying necks, from Guinea to Ware Neck, face tidal "
                         "flooding, storm surge and some of the fastest relative sea-level rise on the US East "
                         "Coast.")},
-    # Survey data only (no damage analysis yet): listed as a location so the NSI
-    # survey tool can open it; every other section says there is no analysis.
+    # Hamilton Beach and Howard Beach, Queens (CIRF). Inputs from
+    # tools/make_hhb_inputs.py. BFE 10 ft NAVD88: FEMA 2015 preliminary FIRM
+    # (10 ft at most buildings, 11 ft at a few); the NYC Building Code uses it
+    # because it is stricter than the 2007 effective map (BFE 8-9 ft NGVD29,
+    # about 6.9-7.9 ft NAVD88). Freeboard 2 ft: NYC requires BFE + 2 ft for one-
+    # and two-family homes in the A zone (1 ft for multi-family and commercial).
+    # Present-day (2025) levels, ft NAVD88: MHHW from NOAA 8517201 on the 2025
+    # mean sea level; monthly from Orton et al. 2019 (Inwood); 10% and 1% from
+    # NACCS save point 12011 shifted to 2025.
     # "survey_key" is the place name the survey backend (Apps Script) knows.
-    "HamiltonHowardBeach": {"name": "Hamilton and Howard Beach", "survey_only": True,
+    "HamiltonHowardBeach": {"name": "Hamilton and Howard Beach", "bfe_ft": 10.0, "freeboard_ft": 2.0,
+                    "elev_min_shortfall_ft": 0.0,
+                    "restrict_manuf": False, "mobile_homes_dominated": False,
                     "survey_key": "hamiltonhowardbeach", "protected": True, "state": "NY",
+                    "target_years": [2025, 2040, 2055, 2075, 2100],
+                    "flood_levels": {"mhhw_ft": 3.2, "monthly_ft": 4.0, "pct10_ft": 7.7, "pct1_ft": 10.8},
                     "blurb": (
                         "Hamilton Beach and Howard Beach sit on the north shore of Jamaica Bay in Queens, "
-                        "New York. Building data are in the NSI survey tool; the flood damage analysis has "
-                        "not been run yet.")},
+                        "New York. Most homes stand a few feet above the daily high tide, so storm surge "
+                        "reaches nearly every street and rising seas bring tidal flooding to the lowest blocks.")},
 }
 
 # ---------------------------------------------------------------------------

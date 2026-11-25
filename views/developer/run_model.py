@@ -115,7 +115,8 @@ def render(ctx):
                             help="DFE = BFE + freeboard. Elevation raises the first floor to the DFE.")
         zone = e.selectbox("Flood zone (curve set)", ["A", "V", "Riverine"], index=0)
         occf = f.selectbox("Buildings to run", ["ALL", "RES", "NONRES"], index=0)
-        years_txt = h.text_input("Target years", value=", ".join(str(y) for y in C.TARGET_YEARS_DEFAULT),
+        years_txt = h.text_input("Target years", value=", ".join(str(y) for y in (cfg.get("target_years")
+                                                                                   or C.TARGET_YEARS_DEFAULT)),
                                  help="Cumulative damage is reported from the first water-level year to each target year.")
         add_story = st.checkbox("One-story homes: score 'WFP 1st' as an add-a-story conversion (v13/v14 rule)", value=True)
         st.caption(f"Reporting flag RESTRICT_MANUF_LOC = {int(bool(cfg.get('restrict_manuf', False)))} "

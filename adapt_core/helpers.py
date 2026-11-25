@@ -125,6 +125,7 @@ def parse_filename(filename):
         ('Pamunkey', 'Pamunkey'),
         ('Hampton', 'Hampton'),
         ('Montauk', 'Montauk'),
+        ('HamiltonHowardBeach', 'Hamilton and Howard Beach'),
     ]
     
     for pattern, display_name in location_patterns:
