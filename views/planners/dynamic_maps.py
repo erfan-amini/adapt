@@ -1499,8 +1499,9 @@ def render(ctx):
                     hoverlabel=dict(bgcolor="white", font_size=12, font_family="Arial"),
                     showlegend=True,
                     legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01,
-                                bgcolor="rgba(255,255,255,0.85)",
-                                bordercolor="rgba(0,0,0,0.15)", borderwidth=1),
+                                bgcolor="rgba(255,255,255,0.9)",
+                                bordercolor="rgba(0,0,0,0.2)", borderwidth=1,
+                                font=dict(size=16), itemsizing="constant"),
                 )
 
                 # Click capture: tag the chart with a stable key + on_select="rerun"
