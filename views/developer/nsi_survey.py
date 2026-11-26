@@ -30,6 +30,26 @@ def _ground_3dep(slug):
         return {}
 
 
+@st.cache_data(show_spinner=False)
+def _read_value_kit(path, mtime):
+    with open(path, "r", encoding="utf-8") as fh:
+        return _json.load(fh)
+
+
+def _value_kit(slug):
+    """Neighborhood inputs for the NYC home-value button, or None.
+
+    data/_survey/<slug>_value_kit.json, built by tools/make_nyc_value_kit.py
+    from public NYC data (sales, PLUTO, city market values) and NSI."""
+    path = os.path.join(SURVEY_DATA_DIR, f"{slug}_value_kit.json")
+    if not slug or not os.path.exists(path):
+        return None
+    try:
+        return _read_value_kit(path, os.path.getmtime(path))
+    except Exception:
+        return None
+
+
 def render(ctx):
     ui.page_header(
         "NSI survey tool",
@@ -75,6 +95,20 @@ def render(ctx):
             "Ground elevation flags compare each building's ground elevation with USGS 3DEP "
             "(1 m bare-earth lidar). Red: a placeholder value (0, 0.33 or 3.82 ft). Purple: more than "
             "4 ft below 3DEP. Yellow: 2 to 4 ft below 3DEP. The building panel shows the 3DEP value."
+        )
+    # NYC home value from public data (the 🏙 button next to the value fields).
+    kit = _value_kit(slug)
+    if kit:
+        payload = _json.dumps(kit, separators=(",", ":")).replace("</", "<\\/")
+        inject += "<script>window.__ADAPT_VALUE_KIT = %s;</script>\n" % payload
+        s = kit.get("sales", {})
+        st.caption(
+            "🏙 next to the value fields appears when a building has no structure or content value. It estimates "
+            "them from public NYC data, the way MOCEJ prices a similar home nearby (method 2), then takes off the "
+            f"land and NSI's wear: ${kit['ppsf']:,.0f} per sq ft (median of {s.get('n', 0)} home sales in "
+            f"{s.get('nta', 'the neighborhood')}, {s.get('from', '')[:4]} to {s.get('to', '')[:4]}) × the tax lot's "
+            "floor area (PLUTO) × the building share of the lot's market value (NYC Finance) × NSI's kept share "
+            "after wear for nearby homes of similar age. Content is half. 1-3 family homes only."
         )
     anchor = '<script type="text/babel"'
     html = html.replace(anchor, inject + anchor, 1)
