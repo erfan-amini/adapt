@@ -9,6 +9,19 @@ Sources
     2013); floor area from Microsoft footprints, or the NYC outline where one
     Microsoft polygon covers several attached buildings; stories, foundation
     and building type from NSI; values are NSI 2026.
+- data/HamiltonHowardBeach/source/HHB_tax_lots_2026-11-26.csv
+    Each building's NYC tax lot and what the city records say about it
+    (tools/nyc_values.py): PLUTO basement code, building class, floor area,
+    year built, and the building share of the lot's market value.
+    Basement: PLUTO decides where it is clear. Codes 1 to 4 (full or partial,
+    above or below grade) mean a basement, code 0 means none; for code 5
+    (unknown) or no tax lot, NSI's foundation type stays. A basement sets the
+    foundation type to B (and WB in the occupancy code); no basement turns
+    B into C (crawl space) and WB into NB. Foundation heights stay NSI's.
+    Values: NSI where it has one. A building with no structure or content
+    value gets the MOCEJ method 2 value (neighborhood price per sq ft x floor
+    area, less land and NSI wear; content half) from public NYC data, the same
+    number as the survey tool's NYC button (1-3 family homes only).
     The first run (Kytt MacManus's sample of 5 Nov 2026,
     source/HHB_All_Buildings_2026-11-05.xlsx, with source/HHB_ground_3dep_2026-11-05.csv)
     is kept for reference.
@@ -54,6 +67,8 @@ SLUG = "HamiltonHowardBeach"
 OUT = os.path.join(ROOT, "data", SLUG)
 SRC = os.path.join(OUT, "source")
 INV_SRC = os.path.join(SRC, "HHB_survey_sheet_2026-11-26.csv")
+LOTS_SRC = os.path.join(SRC, "HHB_tax_lots_2026-11-26.csv")
+KIT_SRC = os.path.join(ROOT, "data", "_survey", "hamiltonhowardbeach_value_kit.json")
 
 M_TO_FT = 1.0 / 0.3048
 YEARS = list(range(2025, 2101))
@@ -120,13 +135,55 @@ def build_water_levels():
     return files, present
 
 
+def pluto_basement(a, lots):
+    """Basement yes/no from PLUTO where it is clear; NSI otherwise."""
+    code = a[["ID"]].merge(lots[["ID", "bsmtcode"]], on="ID", how="left").bsmtcode
+    nsi_b = a.foundation_type.astype(str).str.upper().eq("B") | a.occupancy_type.astype(str).str.contains("WB")
+    yes, no = code.between(1, 4), code.eq(0)
+    a = a.copy()
+    to_b, to_n = yes & ~nsi_b, no & nsi_b
+    a.loc[yes, "foundation_type"] = "B"
+    a.loc[yes, "occupancy_type"] = a.loc[yes, "occupancy_type"].str.replace("NB", "WB", regex=False)
+    a.loc[to_n & a.foundation_type.eq("B"), "foundation_type"] = "C"
+    a.loc[no, "occupancy_type"] = a.loc[no, "occupancy_type"].str.replace("WB", "NB", regex=False)
+    a["basement_source"] = np.where(yes | no, "PLUTO", "NSI")
+    print(f"basement: PLUTO for {int((yes | no).sum())} buildings ({int(yes.sum())} yes, {int(no.sum())} no), "
+          f"NSI for {int((~(yes | no)).sum())}; {int(to_b.sum())} switched to basement, {int(to_n.sum())} to none; "
+          f"basements now {int((a.foundation_type.eq('B') | a.occupancy_type.str.contains('WB')).sum())} of {len(a)}")
+    return a
+
+
+def fill_values(a, lots):
+    """MOCEJ method 2 (public NYC data) where NSI has no structure or content value."""
+    a = a.copy()
+    a["value_source"] = "NSI"
+    miss = ~(a.structure_value > 0) | ~(a.content_value > 0)
+    if miss.any():
+        import json
+        sys.path.insert(0, os.path.join(ROOT, "tools"))
+        import nyc_values
+        with open(KIT_SRC) as fh:
+            kit = json.load(fh)
+        v = nyc_values.method2_values(lots, a.loc[miss, ["ID", "longitude", "latitude"]], kit).set_index("ID")
+        ids = a.loc[miss, "ID"]
+        a.loc[miss, "structure_value"] = ids.map(v.structure_m2).values
+        a.loc[miss, "content_value"] = ids.map(v.content_m2).values
+        got = miss & (a.structure_value > 0)
+        a.loc[got, "value_source"] = "MOCEJ method 2 (NYC public data)"
+        a.loc[miss & ~got, "value_source"] = "none"
+    print(f"values: {int((~miss).sum())} from NSI, {int((a.value_source == 'MOCEJ method 2 (NYC public data)').sum())} "
+          f"filled with MOCEJ method 2, {int((a.value_source == 'none').sum())} still missing")
+    return a
+
+
 def build_inventory():
     a = pd.read_csv(INV_SRC)
-    req = ["ID", "occupancy_type", "number_of_stories", "foundation_type", "foundation_height",
-           "ground_elevation", "structure_value", "content_value"]
+    lots = pd.read_csv(LOTS_SRC, dtype={"bbl": str})
+    req = ["ID", "occupancy_type", "number_of_stories", "foundation_type", "foundation_height", "ground_elevation"]
     bad = a[req].isna().any(axis=1)
     if bad.any():
         raise ValueError(f"{int(bad.sum())} buildings miss a required field.")
+    a = fill_values(pluto_basement(a, lots), lots)
     inv = pd.DataFrame({
         "ID": a["ID"].astype("int64"),
         "occupancy_type": a["occupancy_type"],
@@ -142,6 +199,8 @@ def build_inventory():
         "latitude": a["latitude"],
         "structure_value": a["structure_value"].round(2),
         "content_value": a["content_value"].round(2),
+        "basement_source": a["basement_source"],
+        "value_source": a["value_source"],
     })
     path = os.path.join(OUT, f"DDD___{SLUG}___NSI.xlsx")
     inv.to_excel(path, index=False)
