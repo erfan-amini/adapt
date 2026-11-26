@@ -619,11 +619,15 @@ def render(ctx):
                             continue
 
                         display_name = action_name
-                        if action_name == 'WFP B':
-                            display_name = 'WFP Basement'
+                        if action_name == 'Raise Utilities':
+                            display_name = 'Elevate utilities'
+                        elif action_name == 'Elevate':
+                            display_name = 'Elevate building'
+                        elif action_name == 'WFP B':
+                            display_name = 'Wet floodproof basement'
                         elif action_name == 'WFP 1st':
                             display_name = (ADD_STORY_LABEL if _row_add_story
-                                            else 'WFP 1st Floor')
+                                            else 'Wet floodproof first floor')
 
                         if action_name == 'No mitigation':
                             text += f"<b>No Mitigation</b>: {format_currency(val)}<br>"
@@ -1009,9 +1013,9 @@ def render(ctx):
                         # and therefore not plotted.
                         cat_specs = [
                             (1, 'No Damage',        '#22c55e'),  # green
-                            (2, 'Raise Utilities',  '#a3e635'),  # lime
-                            (3, 'WFP Basement',     '#facc15'),  # yellow
-                            (4, 'Elevation',        '#f97316'),  # orange
+                            (2, 'Elevate utilities', '#a3e635'),  # lime
+                            (3, 'Wet floodproof basement', '#facc15'),  # yellow
+                            (4, 'Elevate building', '#f97316'),  # orange
                             (5, 'Residual Damage',  '#dc2626'),  # red
                         ]
                         # Drop a cheap-retrofit group entirely when its column
@@ -1611,7 +1615,7 @@ def render(ctx):
                             "🏠 **Mobile-homes-dominated area:** only **raising (elevating) homes** is considered. "
                             f"Raising a home counts as effective when it **{_rule_txt}. The hover shows each "
                             f"{_ae_stat_word}; \u2713 marks a measure that meets the rule. **No Damage** "
-                            f"({_green_txt}) \u2192 **Elevation** \u2192 **Residual Damage** (Under-DFE homes below "
+                            f"({_green_txt}) \u2192 **Elevate building** \u2192 **Residual Damage** (Under-DFE homes below "
                             f"the elevation cutoff where {_red_txt}; the conversation moves to buyout, relocation, "
                             "or community-scale measures). Above-DFE buildings are not plotted." + _stat_note
                             + ae_gap_note
@@ -1620,8 +1624,8 @@ def render(ctx):
                         st.caption(
                             f"Each building is colored by the **cheapest measure that {_rule_txt}. The hover shows "
                             f"each measure's {_ae_stat_word}; \u2713 marks a measure that meets the rule. Priority "
-                            f"order: **No Damage** ({_green_txt}) \u2192 **Raise Utilities** \u2192 **WFP Basement** "
-                            f"\u2192 **Elevation** \u2192 **Residual Damage** (Under-DFE, below the elevation cutoff, "
+                            f"order: **No Damage** ({_green_txt}) \u2192 **Elevate utilities** \u2192 **Wet floodproof basement** "
+                            f"\u2192 **Elevate building** \u2192 **Residual Damage** (Under-DFE, below the elevation cutoff, "
                             f"and {_red_txt}). Change the statistic and cutoff under Advanced options." + _stat_note
                             + ae_gap_note
                         )

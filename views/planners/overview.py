@@ -117,11 +117,11 @@ def _render_summary(ctx, df_agg, df_buildings, loc_entry, location_name, mobile_
         else:
             action_order_cs = ['No mitigation', 'Raise Utilities', 'WFP B', 'Elevate', 'WFP 1st']
             action_labels_cs = {
-                'No mitigation':   'No Mitigation',
-                'Raise Utilities': 'Raise Utilities',
-                'WFP B':           'WFP Basement',
-                'WFP 1st':         'WFP 1st Floor',
-                'Elevate':         'Elevate',
+                'No mitigation':   'No action',
+                'Raise Utilities': 'Elevate utilities',
+                'WFP B':           'Wet floodproof basement',
+                'WFP 1st':         'Wet floodproof first floor',
+                'Elevate':         'Elevate building',
             }
             actions_present_cs = [a for a in action_order_cs
                                   if a in df_year_agg['Action'].unique()]
@@ -265,18 +265,18 @@ def _render_summary(ctx, df_agg, df_buildings, loc_entry, location_name, mobile_
         traj_action_order = ['No mitigation', 'Raise Utilities',
                              'WFP B', 'Elevate', 'WFP 1st']
         traj_action_labels = {
-            'No mitigation':   'No Mitigation',
-            'Raise Utilities': 'Raise Utilities',
-            'WFP B':           'WFP Basement',
-            'WFP 1st':         'WFP 1st Floor',
-            'Elevate':         'Elevate',
+            'No mitigation':   'No action',
+            'Raise Utilities': 'Elevate utilities',
+            'WFP B':           'Wet floodproof basement',
+            'WFP 1st':         'Wet floodproof first floor',
+            'Elevate':         'Elevate building',
         }
         traj_color_map = {
-            'No Mitigation':   '#ef4444',   # red
-            'Raise Utilities': '#f97316',   # orange
-            'WFP Basement':    '#eab308',   # yellow
-            'WFP 1st Floor':   '#3b82f6',   # blue
-            'Elevate':         '#22c55e',   # green
+            'No action':                  '#ef4444',   # red
+            'Elevate utilities':          '#f97316',   # orange
+            'Wet floodproof basement':    '#eab308',   # yellow
+            'Wet floodproof first floor': '#3b82f6',   # blue
+            'Elevate building':           '#22c55e',   # green
         }
 
         df_timeline = _sum_agg[
@@ -627,8 +627,9 @@ def _render_trends(ctx, df_agg, location_name, occupancy_label):
     st.caption("Cumulative community damage for every adaptation strategy, one panel per sea-level rise scenario, "
                "on a shared scale.")
     trend_action_order = ['No mitigation', 'Raise Utilities', 'WFP B', 'Elevate', 'WFP 1st']
-    trend_action_labels = {'No mitigation': 'No Mitigation', 'Raise Utilities': 'Raise Utilities',
-                           'WFP B': 'WFP Basement', 'WFP 1st': 'WFP 1st Floor', 'Elevate': 'Elevate'}
+    trend_action_labels = {'No mitigation': 'No action', 'Raise Utilities': 'Elevate utilities',
+                           'WFP B': 'Wet floodproof basement', 'WFP 1st': 'Wet floodproof first floor',
+                           'Elevate': 'Elevate building'}
     trend_action_colors = {'No mitigation': '#ef4444', 'Raise Utilities': '#0ea5e9', 'WFP B': '#6366f1',
                            'WFP 1st': '#8b5cf6', 'Elevate': '#10b981'}
     _trend_max = df_agg['Total_CumEAD_P50'].max()

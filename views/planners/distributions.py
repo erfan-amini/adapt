@@ -70,11 +70,11 @@ def render(ctx, embedded=False):
             # ----- Strategy ordering & labels -----
             action_order  = ['No mitigation', 'Raise Utilities', 'WFP B', 'Elevate', 'WFP 1st']
             action_labels_plain = {
-                'No mitigation':   'No Mitigation',
-                'Raise Utilities': 'Raise Utilities',
-                'WFP B':           'WFP Basement',
-                'WFP 1st':         'WFP 1st Floor',
-                'Elevate':         'Elevate',
+                'No mitigation':   'No action',
+                'Raise Utilities': 'Elevate utilities',
+                'WFP B':           'Wet floodproof basement',
+                'WFP 1st':         'Wet floodproof first floor',
+                'Elevate':         'Elevate building',
             }
             actions_present = [a for a in action_order if a in df_b_year['Action'].unique()]
 
@@ -450,10 +450,10 @@ def render(ctx, embedded=False):
                             return [100.0 * s['n_raiseu'] / nd if nd > 0 else 0]
                         def _c4(s): return [s['n_raiseu']]
                         fig4 = _make_paired_bar(
-                            f"Damaged buildings where Raise Utilities eliminates "
+                            f"Damaged buildings where elevating utilities eliminates "
                             f"upper-tail damage by {target_year}",
                             _v4, _c4,
-                            x_left='Raise Utilities',
+                            x_left='Elevate utilities',
                             single_group=True,
                         )
                     else:
@@ -462,10 +462,10 @@ def render(ctx, embedded=False):
                             return [100.0 * s['n_wfpb'] / nd if nd > 0 else 0]
                         def _c4(s): return [s['n_wfpb']]
                         fig4 = _make_paired_bar(
-                            f"Damaged buildings where WFP Basement eliminates "
+                            f"Damaged buildings where wet floodproofing the basement eliminates "
                             f"upper-tail damage by {target_year}",
                             _v4, _c4,
-                            x_left='WFP Basement',
+                            x_left='Wet floodproof basement',
                             single_group=True,
                         )
 
