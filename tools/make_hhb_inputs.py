@@ -1,16 +1,17 @@
 """Build the ADAPT model inputs for Hamilton Beach and Howard Beach (Queens, NYC).
 
 Sources
-- data/HamiltonHowardBeach/source/HHB_All_Buildings_2026-11-05.xlsx
-    Kytt MacManus's provisional building sample (CIRF, 5 Nov 2026): 5,577 NYC
-    building footprints with PLUTO attributes first and NSI 2026 values filling
-    gaps, in the 14-field ADAPT inventory layout. 1,109 buildings have blank
-    fields (974 garages and 135 others); the engine lists them as skipped.
-    The address column is dropped here.
-- data/HamiltonHowardBeach/source/HHB_ground_3dep_2026-11-05.csv
-    USGS 3DEP 1 m bare-earth ground (NY CMPG 2013 tile, ft NAVD88) at each
-    building point (tools/make_ground_3dep.py). It replaces the NSI ground
-    elevation, which sits a median 4.5 ft below the lidar ground in this area.
+- data/HamiltonHowardBeach/source/HHB_survey_sheet_2026-11-26.csv
+    The Surveys_hamiltonhowardbeach tab of the NSI Survey Data sheet on
+    26 Nov 2026 (address, notes and survey fields left out): Giselle DeSousa's
+    NSI and MapPLUTO match of 19 Nov 2026, 4,697 buildings, one NSI point
+    each. Ground elevation is the USGS 3DEP 1 m bare-earth lidar (NY CMPG
+    2013); floor area from Microsoft footprints, or the NYC outline where one
+    Microsoft polygon covers several attached buildings; stories, foundation
+    and building type from NSI; values are NSI 2026.
+    The first run (Kytt MacManus's sample of 5 Nov 2026,
+    source/HHB_All_Buildings_2026-11-05.xlsx, with source/HHB_ground_3dep_2026-11-05.csv)
+    is kept for reference.
 
 Water levels (DDD___HamiltonHowardBeach_MC_annual_max_waterlevels_P50/P90.csv)
 - Recurrence curve: USACE NACCS save point 12011 (40.6471 N, 73.8352 W), CC
@@ -52,8 +53,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SLUG = "HamiltonHowardBeach"
 OUT = os.path.join(ROOT, "data", SLUG)
 SRC = os.path.join(OUT, "source")
-INV_SRC = os.path.join(SRC, "HHB_All_Buildings_2026-11-05.xlsx")
-GROUND_SRC = os.path.join(SRC, "HHB_ground_3dep_2026-11-05.csv")
+INV_SRC = os.path.join(SRC, "HHB_survey_sheet_2026-11-26.csv")
 
 M_TO_FT = 1.0 / 0.3048
 YEARS = list(range(2025, 2101))
@@ -121,11 +121,12 @@ def build_water_levels():
 
 
 def build_inventory():
-    a = pd.read_excel(INV_SRC)
-    g = pd.read_csv(GROUND_SRC, usecols=["ID", "ground_3dep_ft"])
-    a = a.merge(g, on="ID", how="left", validate="one_to_one")
-    if a["ground_3dep_ft"].isna().any():
-        raise ValueError(f"{int(a['ground_3dep_ft'].isna().sum())} buildings have no 3DEP ground value.")
+    a = pd.read_csv(INV_SRC)
+    req = ["ID", "occupancy_type", "number_of_stories", "foundation_type", "foundation_height",
+           "ground_elevation", "structure_value", "content_value"]
+    bad = a[req].isna().any(axis=1)
+    if bad.any():
+        raise ValueError(f"{int(bad.sum())} buildings miss a required field.")
     inv = pd.DataFrame({
         "ID": a["ID"].astype("int64"),
         "occupancy_type": a["occupancy_type"],
@@ -135,8 +136,7 @@ def build_inventory():
         "foundation_type": a["foundation_type"],
         "foundation_height": a["foundation_height"],
         "year_built": a["year_built"],
-        "ground_elevation": a["ground_3dep_ft"].round(2),
-        "ground_elevation_nsi": a["ground_elevation"].round(2),
+        "ground_elevation": a["ground_elevation"].round(2),
         "address": np.nan,
         "longitude": a["longitude"],
         "latitude": a["latitude"],
@@ -160,8 +160,7 @@ def main():
     path, inv = build_inventory()
     complete = inv[["foundation_height", "structure_value", "content_value"]].notna().all(axis=1)
     print(f"{os.path.basename(path)}: {len(inv)} buildings, {int(complete.sum())} with complete attributes; "
-          f"3DEP ground median {inv['ground_elevation'].median():.2f} ft "
-          f"(NSI {inv['ground_elevation_nsi'].median():.2f} ft)")
+          f"3DEP ground median {inv['ground_elevation'].median():.2f} ft")
 
 
 if __name__ == "__main__":
