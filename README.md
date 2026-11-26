@@ -11,7 +11,7 @@ has three modules behind a landing page:
 |---|---|---|
 | Households and Businesses | residents, businesses, property owners | My home (address lookup and home report with PDF), Neighborhood maps (hexagon summaries, no single home shown) |
 | Community Planning | planners, agencies, community leaders | Community overview (summary, trends, damage distributions), Dynamic maps (damage bins, adaptation effectiveness, flood occurrences, flood map, road map), Building-specific reports |
-| Developer | the project team | Data and settings, NSI survey tool, Fragility curves, Run the model |
+| Developer | the project team | Data and settings, Building attribute data, Fragility curves, Run the model |
 
 The sidebar also holds **Ask ADAPT AI**, a chat assistant that answers questions about the
 tool, the methods and the selected community. It needs a free API key in the secrets
@@ -31,7 +31,7 @@ default), the landing page stays open and every section asks for the access pass
 entry opens all sections and locations for the session. The password is checked against `[access] password` in Streamlit secrets when it is set,
 and otherwise by the NSI survey backend (Apps Script), which keeps it in its script
 properties (`SURVEY_PASSWORD`). The password is never written in the code. A correct entry
-is passed to the NSI survey tool, which sends it with every request to the backend; the
+is passed to the survey tool (Building attribute data), which sends it with every request to the backend; the
 backend refuses requests without it. The Developer module also asks for
 `[developer] password` when one is set.
 

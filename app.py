@@ -7,7 +7,7 @@ Entry point. Three audience modules behind a landing page:
     Community Planning        - community overview (summary, trends, damage distributions),
                                 dynamic maps (damage, adaptation, flood occurrences, flood and
                                 road maps), building-specific reports
-    Developer                 - data and settings, NSI survey tool, fragility curves, run the model
+    Developer                 - data and settings, building attribute data, fragility curves, run the model
 
 The pages are registered with st.navigation before anything heavy is
 imported: each view module (pandas, plotly, terrain, ...) is imported only
@@ -39,7 +39,7 @@ PAGES = [
     ("dyn_maps",    "planners",  "Dynamic maps",          "🗺️", "maps",          "views.planners.dynamic_maps"),
     ("my_building", "planners",  "Building-specific reports", "🏠", "building-reports", "views.planners.my_building"),
     ("dev_data",    "developer", "Data and settings",     "🗄️", "dev-data",      "views.developer.data"),
-    ("dev_nsi",     "developer", "NSI survey tool",       "📍", "dev-nsi",       "views.developer.nsi_survey"),
+    ("dev_nsi",     "developer", "Building attribute data", "📍", "dev-nsi",       "views.developer.nsi_survey"),
     ("dev_curves",  "developer", "Fragility curves",      "📈", "dev-curves",    "views.developer.curves"),
     ("dev_run",     "developer", "Run the model",         "▶️", "dev-run",       "views.developer.run_model"),
 ]
@@ -162,7 +162,7 @@ def _run_page(key, module, title, fn):
         _sidebar_tail(module, None, title)
         ui.footer()
         return
-    # A survey-only place has no results: only the NSI survey tool opens.
+    # A survey-only place has no results: only Building attribute data opens.
     if location and ui.is_survey_only(registry, location) and key != "dev_nsi":
         ui.survey_only_note(location)
         _sidebar_tail(module, None, title)

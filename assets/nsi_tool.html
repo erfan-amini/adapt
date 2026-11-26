@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>NSI Field Survey Tool</title>
+  <title>Building Attribute Data</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏗</text></svg>">
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -1703,6 +1703,8 @@ function App() {
     if (!selected || !valKit || nycBusy) return;
     const b = buildings.find(x => x.uid === selected);
     if (!b) return;
+    if (parseFloat(form.structureValue) > 0 && parseFloat(form.contentValue) > 0 &&
+        !confirm("This building already has a structure and content value.\n\nReplace them with the estimate from NYC public data (MOCEJ method 2, less land and wear)?\n\nNothing is saved until you press Save.")) return;
     const uid = selected;
     setNycBusy(true);
     try {
@@ -2206,9 +2208,12 @@ function App() {
                   <FLD label="Content Value ($) *" s={{flex:1}}>
                     <input type="number" value={form.contentValue} onChange={e=>setForm(f=>({...f,contentValue:e.target.value}))} style={inp}/>
                   </FLD>
-                  <button onClick={autoEstimateCost} title="OLS regression estimate" style={{padding:"7px 8px",borderRadius:6,border:"1px solid #334155",cursor:"pointer",background:"#1e3a5f",color:"#60a5fa",fontWeight:700,fontSize:9,whiteSpace:"nowrap"}}>💰</button>
-                  {valKit && (!(parseFloat(form.structureValue) > 0) || !(parseFloat(form.contentValue) > 0)) &&
-                    <button onClick={autoEstimateNyc} disabled={nycBusy} title="Estimate from NYC public data: MOCEJ method 2, less land and NSI wear (1-3 family homes)" style={{padding:"7px 8px",borderRadius:6,border:"1px solid #0e7490",cursor:nycBusy?"wait":"pointer",background:nycBusy?"#334155":"#083344",color:"#67e8f9",fontWeight:700,fontSize:9,whiteSpace:"nowrap"}}>{nycBusy ? "⏳" : "🏙"}</button>}
+                  {!valKit
+                    ? <button onClick={autoEstimateCost} title="OLS regression estimate" style={{padding:"7px 8px",borderRadius:6,border:"1px solid #334155",cursor:"pointer",background:"#1e3a5f",color:"#60a5fa",fontWeight:700,fontSize:9,whiteSpace:"nowrap"}}>💰</button>
+                    : <div style={{display:"flex",flexDirection:"column",gap:3}}>
+                        <button onClick={autoEstimateCost} title="OLS regression estimate" style={{padding:"2px 7px",borderRadius:5,border:"1px solid #334155",cursor:"pointer",background:"#1e3a5f",color:"#60a5fa",fontWeight:700,fontSize:9,lineHeight:"14px",whiteSpace:"nowrap"}}>💰</button>
+                        <button onClick={autoEstimateNyc} disabled={nycBusy} title="NYC public data: MOCEJ method 2, less land and NSI wear (1-3 family homes)" style={{padding:"2px 7px",borderRadius:5,border:"1px solid #0e7490",cursor:nycBusy?"wait":"pointer",background:nycBusy?"#334155":"#083344",color:"#67e8f9",fontWeight:700,fontSize:9,lineHeight:"14px",whiteSpace:"nowrap"}}>{nycBusy ? "⏳" : "🏙"}</button>
+                      </div>}
                 </div>
                 {nycInfo && nycInfo.uid === selected && (() => {
                   const pct = v => Math.round(v * 100) + "%";
@@ -2347,7 +2352,7 @@ function PasswordGate({ onUnlock }) {
     <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",background:"#0f172a",fontFamily:"'Segoe UI',system-ui,sans-serif",padding:20}}>
       <div style={{maxWidth:400,width:"100%",textAlign:"center"}}>
         <div style={{fontSize:48,marginBottom:12}}>🔒</div>
-        <h1 style={{color:"#f8fafc",fontSize:20,fontWeight:700,margin:"0 0 4px"}}>NSI Field Survey Tool</h1>
+        <h1 style={{color:"#f8fafc",fontSize:20,fontWeight:700,margin:"0 0 4px"}}>Building Attribute Data</h1>
         <p style={{color:"#64748b",fontSize:13,marginBottom:24}}>Enter password to continue</p>
         <div style={{display:"flex",gap:8}}>
           <input type="password" value={pw}

@@ -1,7 +1,7 @@
 """Sample USGS 3DEP 1 m bare-earth ground elevation at each building point.
 
-The NSI survey tool uses the output to flag ground elevations that look wrong
-(Developer > NSI survey tool). Run it offline; it is not part of the app.
+The survey tool (Developer > Building attribute data) uses the output to flag
+ground elevations that look wrong. Run it offline; it is not part of the app.
 
 Usage:
     python tools/make_ground_3dep.py points.csv data/_survey/<slug>_ground_3dep.csv

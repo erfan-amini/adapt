@@ -1,6 +1,6 @@
-"""Build the neighborhood inputs for the NSI survey tool's NYC home-value button.
+"""Build the neighborhood inputs for the NYC home-value button in Building attribute data.
 
-For New York City locations, the survey tool (Developer > NSI survey tool) can
+For New York City locations, the survey tool (Developer > Building attribute data) can
 estimate a home's structure and content value from public city data when the
 inventory has none. It follows the MOCEJ Resilient Acquisitions "method 2"
 (price of a similar home nearby = neighborhood price per sq ft x floor area),

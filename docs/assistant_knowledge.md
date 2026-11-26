@@ -72,7 +72,7 @@ and name at the top of the sidebar returns to the landing page.
   mobile-homes flag, password protection, present-day flood levels for the
   home report, description), inventory upload or Google Sheet pull with
   column mapping, water-level upload, curve tables.
-- NSI survey tool: the field survey tool for checking building attributes
+- Building attribute data (formerly NSI survey tool): the field survey tool for checking building attributes
   (Google Street View based). Where data/_survey/<slug>_ground_3dep.csv exists
   (now Hamilton and Howard Beach), it flags ground elevations against USGS 3DEP
   1 m lidar: red = placeholder value (0, 0.33 or 3.82 ft), purple = more than

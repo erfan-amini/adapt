@@ -595,7 +595,7 @@ def survey_only_note(name):
         st.markdown(
             "<div class='adapt-card accent'><div class='icon'>📍</div>"
             f"<h3>No analysis yet for {name}</h3>"
-            "<p>The building data for this place are in <b>Developer → NSI survey tool</b>. "
+            "<p>The building data for this place are in <b>Developer → Building attribute data</b>. "
             "Flood levels and damage results will appear here once the model has been run.</p></div>",
             unsafe_allow_html=True,
         )

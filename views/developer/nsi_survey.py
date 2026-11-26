@@ -1,4 +1,4 @@
-"""Developer: embedded NSI field-survey tool (React/Leaflet, Google Sheets backend)."""
+"""Developer: Building attribute data, the embedded NSI field-survey tool (React/Leaflet, Google Sheets backend)."""
 import json as _json
 import os
 import re as _re
@@ -52,7 +52,7 @@ def _value_kit(slug):
 
 def render(ctx):
     ui.page_header(
-        "NSI survey tool",
+        "Building attribute data",
         "Walk the map to add, verify, move or flag buildings and record their structural attributes. "
         "Edits sync to the shared Google Sheet backend. Use <b>Data and settings → Pull from Google Sheet</b> "
         "to bring the verified rows into the inventory the model reads.",
