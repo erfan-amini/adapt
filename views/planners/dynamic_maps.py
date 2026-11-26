@@ -792,7 +792,7 @@ def render(ctx):
                             marker=dict(size=8 * _point_scale, color='#22c55e', opacity=0.85),
                             hovertemplate='%{customdata[0]}<extra></extra>',
                             customdata=list(df_zero['hover_data']),
-                            name='No Damage (≤ $1k)'
+                            name='No Damage ($0)'
                         ))
 
                     if len(df_nonzero) > 0 and baseline_col:
